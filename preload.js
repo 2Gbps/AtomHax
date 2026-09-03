@@ -39,7 +39,8 @@ if (process.isMainFrame) {
     startUpdate: (payload) => ipcRenderer.send('update:start', payload),
     relaunchUpdate: (exePath) => ipcRenderer.send('update:relaunch', exePath),
     onUpdateProgress: (cb) => ipcRenderer.on('update:progress', (_e, pct) => cb(pct)),
-    onUpdateDone: (cb) => ipcRenderer.on('update:done', (_e, exePath) => cb(exePath))
+    onUpdateDone: (cb) => ipcRenderer.on('update:done', (_e, exePath) => cb(exePath)),
+    onUpdateAvailable: (cb) => ipcRenderer.on('update:available', (_e, info) => cb(info))
   });
 } else {
   // ── SUBFRAME HOOK: gameframe (HaxBall game/replay iframe) ──

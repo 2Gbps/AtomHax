@@ -29,6 +29,7 @@ declare global {
 			relaunchUpdate: (exePath: string) => void;
 			onUpdateProgress: (cb: (pct: number) => void) => void;
 			onUpdateDone: (cb: (exePath: string) => void) => void;
+			onUpdateAvailable: (cb: (info: { tag: string; assetUrl: string; fileName: string }) => void) => void;
 		};
 		// HaxBall exposes its engine instance on the gameframe window as `g`.
 		g?: any;

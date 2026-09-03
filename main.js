@@ -1258,7 +1258,7 @@ const createWindow = () => {
       nodeIntegrationInSubFrames: true, // run preload in gameframe subframe too
       backgroundThrottling: false // never throttle rAF even when occluded
     },
-    title: "AtomHax"
+    title: "AtomHax " + version
   });
 
   // â”€â”€ Instant startup: show the window NOW â”€â”€
@@ -1435,11 +1435,12 @@ const createWindow = () => {
 
   win.loadURL('https://www.haxball.com/play');
   
-  // Lock the window title to AtomHax â€” the HaxBall website sets document.title
-  // which Electron uses to update the OS window title.
+  // Lock the window title to AtomHax + version — the HaxBall website sets
+  // document.title which would otherwise override the OS window title.
+  const appTitle = 'AtomHax ' + version;
   win.webContents.on('page-title-updated', (e) => {
     e.preventDefault();
-    win.setTitle('AtomHax');
+    win.setTitle(appTitle);
   });
   
   // Additional WebContents performance optimizations
@@ -1469,6 +1470,8 @@ const createWindow = () => {
     // `);
 
     win.webContents.executeJavaScript(injectJS);
+    // Check for updates once per launch (main-process fetch, no CSP issues).
+    setTimeout(() => checkForUpdates(win), 4000);
     // Sidebar is now DOM-based (inject/src/ui/setupSidebar.ts) â€” no WASM,
     // no WebGL overlay canvas. Zero compositor overhead when idle â†’ game fps
     // stays at 1500+. See setupSidebar.ts for the auto-hide-on-leave reveal.
@@ -1744,6 +1747,60 @@ ipcMain.on('open-external', (_e, url) => {
 });
 
 // â”€â”€ Auto-update: stream the new portable exe next to the current one â”€â”€
+// ── Auto-update: the version CHECK runs in the MAIN process (a renderer
+// fetch would be blocked by the page CSP). On success it pushes
+// update:available to the renderer, which shows the progress modal and
+// starts the download. ──
+const UPDATE_REPO = '2Gbps/AtomHax';
+const UPDATE_TOKEN = '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';
+
+const compareVersions = (a, b) => {
+  const nums = (v) => (v.replace(/^v/i, '').split('-')[0] || '').split('.').map((n) => parseInt(n, 10) || 0);
+  const na = nums(a), nb = nums(b);
+  const len = Math.max(na.length, nb.length);
+  for (let i = 0; i < len; i++) {
+    const x = na[i] || 0, y = nb[i] || 0;
+    if (x > y) return 1;
+    if (x < y) return -1;
+  }
+  return 0;
+};
+
+const checkForUpdates = (win) => {
+  try {
+    https.get('https://api.github.com/repos/' + UPDATE_REPO + '/releases?per_page=1', {
+      headers: {
+        'User-Agent': 'AtomHax',
+        'Authorization': 'Bearer ' + UPDATE_TOKEN,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => {
+        try {
+          if (res.statusCode !== 200) return;
+          const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+          if (!data || !data.length) return;
+          const latest = data[0];
+          const tag = String(latest.tag_name || '');
+          if (compareVersions(tag, 'v' + version) <= 0) return;
+          const asset = (latest.assets || []).find((a) => /-x64\.exe$/i.test(a.name));
+          if (!asset) return;
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('update:available', {
+              tag,
+              assetUrl: 'https://api.github.com/repos/' + UPDATE_REPO + '/releases/assets/' + asset.id,
+              fileName: asset.name
+            });
+          }
+        } catch (e) {}
+      });
+      res.on('error', () => {});
+    }).on('error', () => {});
+  } catch (e) {}
+};
+
 ipcMain.on('update:start', (_e, payload) => {
   const url = payload && payload.url;
   const fileName = payload && payload.fileName;
