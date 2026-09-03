@@ -1,27 +1,31 @@
 import { waitForElement } from "./waitForElement";
 import { emojiShortcuts } from "./emojis";
+import { startFrameTimeHud } from "./frametime";
+import { pruneGameframeDom, injectPerfStylesheet } from "./domopt";
 
 const addShortcutListener = async (gameframe: HTMLIFrameElement): Promise<void> => {
-	const chatInput = gameframe.contentDocument.querySelector('[data-hook="input"]') as HTMLInputElement;
-	const prefs = await window.electronAPI.getAppPreferences();
-	const shortcutTuples: [string, string][] = prefs["shortcuts"];
-	const shortcutMap = new Map(shortcutTuples);
+  const chatInput = gameframe.contentDocument.querySelector('[data-hook="input"]') as HTMLInputElement;
+  // Cache shortcut map for the session – avoids repeated async IPC.
+  const prefs = await window.electronAPI.getAppPreferences();
+  const shortcutTuples: [string, string][] = prefs["shortcuts"];
+  const shortcutMap = new Map(shortcutTuples);
 
-	const emojiRegex = /:[a-zA-Z0-9_]+:/g;
-
-	chatInput.addEventListener("keyup", () => {
-		let text = chatInput.value;
-
-		// Expand shortcut only if the entire input matches
-		if (shortcutMap.has(text)) {
-			text = shortcutMap.get(text)!;
-		}
-
-		// Replace all matching emoji patterns
-		text = text.replace(emojiRegex, match => emojiShortcuts[match] || match);
-
-		chatInput.value = text;
-	});
+  const emojiRegex = /:[a-zA-Z0-9_]+:/g;
+  let debounceTimer: NodeJS.Timeout | null = null;
+  const handleKeyup = () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      let text = chatInput.value;
+      // Expand shortcut only if the entire input matches
+      if (shortcutMap.has(text)) {
+        text = shortcutMap.get(text)!;
+      }
+      // Replace all matching emoji patterns
+      text = text.replace(emojiRegex, match => emojiShortcuts[match] || match);
+      chatInput.value = text;
+    }, 30);
+  };
+  chatInput.addEventListener("keyup", handleKeyup);
 };
 
 export const toggleTransparentUI = async (): Promise<void> => {
@@ -100,13 +104,14 @@ export const toggleTransparentUI = async (): Promise<void> => {
 }
 
 const removeUnwantedElements = (gameframe: HTMLIFrameElement): void => {
-	// gameframe.contentDocument.getElementById("translateDisclaimer").remove();
-
 	// remove button below esc to hide chat placeholder
 	(gameframe.contentDocument.querySelector(".chatbox-view-contents>.input input[type=text]") as HTMLInputElement).placeholder = "";
 
-	// remove togglechat
-	gameframe.contentDocument.getElementById("toggleChat").childNodes[0].remove();
+	// toggleChat is killed via CSS (#toggleChat { display:none !important }) in
+	// the main-process glass patch — bulletproof against re-creation by the
+	// extension, zero per-mutation cost. This is just a one-time cleanup.
+	const toggleChat = gameframe.contentDocument.getElementById("toggleChat");
+	if (toggleChat) toggleChat.remove();
 }
 
 export const addTranspUIButton = async (): Promise<void> => {
@@ -159,6 +164,26 @@ export const setGameView = async (): Promise<void> => {
 	}
 	addShortcutListener(gameframe);
 	removeUnwantedElements(gameframe);
-    await addTranspUIButton();
-    await toggleTransparentUI();
+
+	// DOM-level perf optimizations: strip box-shadows/filters that force extra
+	// compositor layers, prune the unbounded chat log, and inject a perf-only
+	// stylesheet. Runs on every gameframe load (room transitions recreate the
+	// document so the stylesheet needs re-injecting each time).
+	injectPerfStylesheet(gameframe.contentDocument);
+	pruneGameframeDom(gameframe.contentDocument);
+
+	// NOTE: the Canvas2D perf patch (1px linewidth + arcs→polylines) is now
+	// injected from the MAIN PROCESS via WebFrameMain.executeJavaScript on
+	// did-frame-finish-load (see main.js). Renderer-side patching via
+	// gameframe.contentWindow is blocked by cross-origin protections and
+	// silently fails. Doing it main-process-side is how purehax.eu achieves
+	// 600+ fps.
+	//
+	// The transparent-UI toggle is gone too: every panel is liquid glass now
+	// (forced via !important in the main-process glass patch), so the toggle
+	// had become a visual no-op.
+
+	// Frame-time overlay: lives on the top-level page (not inside the gameframe)
+	// so it survives HaxBall's internal document re-renders. See frametime.ts.
+	startFrameTimeHud();
 }

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>offline-stt</title>
+  </head>
+  <body>
+    <script src="./vosk.js"></script>
+    <script>
+      const modelPath = new URLSearchParams(location.search).get('model');
+      let rec = null;
+
+      (async () => {
+        try {
+          const model = await window.Vosk.createModel(modelPath);
+          rec = new model.KaldiRecognizer(16000);
+          rec.on('result', (m) => {
+            const text = (m && m.result && m.result.text) || '';
+            window.stt.result(text);
+          });
+          window.stt.ready();
+        } catch (e) {
+          window.stt.error(String(e && e.message ? e.message : e));
+        }
+      })();
+
+      window.stt.onTranscribe((payload) => {
+        if (!rec) {
+          window.stt.error('recognizer-not-ready');
+          return;
+        }
+        try {
+          const pcm = payload.pcm; // Float32Array in [-1, 1]
+          const rate = payload.sampleRate || 16000;
+          rec.acceptWaveformFloat(pcm, rate);
+          rec.retrieveFinalResult();
+        } catch (e) {
+          window.stt.error(String(e && e.message ? e.message : e));
+        }
+      });
+    </script>
+  </body>
+</html>

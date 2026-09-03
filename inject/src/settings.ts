@@ -1,6 +1,5 @@
 import { customAlert } from "./alerts";
 import { authNewDialog, authShowAlert, resetAuthAlert } from "./auth";
-import { loadProfileToLocalStorage } from "./profiles";
 import { shortcutListDialog, shortcutNewDialog } from "./shortcuts";
 import { createButton } from "./utils";
 
@@ -152,6 +151,9 @@ export const openSettingsAlert = async (): Promise<void> => {
 		}
 	);
 
+	// Tick multiplier is locked to 4x — no settings toggle needed.
+	// It's hardcoded in main.js and cannot be changed by the user.
+
 	// because discord_rpc was introduced after 0.4.0
 	// here we just make sure that if preferences.json doesn't have discord_rpc
 	// then we consider it Enabled
@@ -172,6 +174,21 @@ export const openSettingsAlert = async (): Promise<void> => {
 	generalSection.appendChild(generalHeader);
 	generalSection.appendChild(generalNote);
 	generalSection.appendChild(fpsRow);
+
+	// Render Scale: lowers the render resolution so the GPU does less work per
+	// frame. The compositor bilinear-upscales to fullscreen, so it looks soft
+	// (not pixelated). Requires a restart and runs the window in fullscreen.
+	const currentRenderScale = String(prefs["render_scale"] || 100) + '%';
+	const renderScaleRow = createToggleRow(
+		'Render Scale', 
+		['100%', '85%', '75%', '50%'], 
+		currentRenderScale, 
+		(selected) => {
+			const value = parseInt(selected);
+			window.electronAPI.setAppPreference("render_scale", value);
+		}
+	);
+	generalSection.appendChild(renderScaleRow);
 	generalSection.appendChild(discordRPCRow);
 	generalSection.appendChild(createDivider());
 
@@ -290,7 +307,6 @@ export const openSettingsAlert = async (): Promise<void> => {
 			.then(result => {
 				if (result.success) {
 					customAlert("Backup restored", "The app will restart in a few seconds (or do it manually)...", []);
-					loadProfileToLocalStorage("default");
 					setTimeout(() => window.electronAPI.restartApp(), 4000);
 				} else {
 					importBackupButton.textContent = "Invalid backup!";

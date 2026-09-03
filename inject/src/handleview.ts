@@ -1,14 +1,10 @@
 import { autoUpdater } from "./autoUpdater"
 import { injectFavoriteRoomsButtons } from "./favrooms";
-import { addTranspUIButton, setGameView, toggleTransparentUI } from "./gameview";
-import { toggleHeaderVisibility } from "./ui/setupCustomHeader";
+import { setGameView } from "./gameview";
 
 export const handleGameView = (viewName: string): void => {
 	switch(true) {
 		case viewName === "dropdown":
-			if (localStorage.getItem("header_visible") === "false"){
-				toggleHeaderVisibility();
-			}
 			window.electronAPI.updateDiscordRPC("Waiting in the Room List")
 			autoUpdater();
 			break;
@@ -18,18 +14,12 @@ export const handleGameView = (viewName: string): void => {
 			"game-view showing-room-view chat-bg-full", 
 			"game-view showing-room-view"
 		].includes(viewName):
-			if (localStorage.getItem("header_visible") === "true"){
-				toggleHeaderVisibility();
-			}
 			window.electronAPI.updateDiscordRPC("Playing in a Room")
 			setTimeout(setGameView, 200); // improve, don't use timeout
 			break;
 		case viewName === "room-view":
-			if (localStorage.getItem("header_visible") === "true"){
-				toggleHeaderVisibility();
-			}
-			addTranspUIButton();
-			toggleTransparentUI();
+			// transparent-UI button removed: liquid glass is now forced on all
+			// panels via the main-process glass patch, the toggle was a no-op.
 			break;
 		case viewName === "roomlist-view":
 			injectFavoriteRoomsButtons();

@@ -1,75 +1,80 @@
 import { closeCustomAlert, customAlert } from "./alerts";
 import { URL } from "./constants";
 
-const newVersionAlert = (latest): void => {
-    const downloadButton = document.createElement('button');
-    downloadButton.innerText = 'Download now';
-    downloadButton.onclick = () => {
-        console.log('Download clicked');
-        window.location.href = latest.url.standard
-        closeCustomAlert();
-    };
-    customAlert(
-        `Changelog ${latest.version} (${latest.date})`,
-        latest.notes,
-        [downloadButton]
-    )
-}
-
-function getOs() {
-    if (navigator.userAgent.indexOf("Windows") !== -1) {
-        return "win";
-    } else if (navigator.userAgent.indexOf("Macintosh") !== -1) {
-        return "macOS";
-    } else {
-        return "linux";
+// Compare "0.1.1-ea" style versions numerically; prerelease suffix ignored.
+const compareVersions = (a: string, b: string): number => {
+    const nums = (v: string) => (v.replace(/^v/i, '').split('-')[0] || '').split('.').map((n) => parseInt(n, 10) || 0);
+    const na = nums(a), nb = nums(b);
+    const len = Math.max(na.length, nb.length);
+    for (let i = 0; i < len; i++) {
+        const x = na[i] || 0, y = nb[i] || 0;
+        if (x > y) return 1;
+        if (x < y) return -1;
     }
-}
+    return 0;
+};
 
-async function checkLatestRelease() {
-    const res = await fetch(URL.releases, {
-        method: "GET",
-        headers: {
-            Accept: "application/vnd.github.v3+json",
-        },
-    });
+let checkDone = false;
 
-    const data = await res.json();
-    const urls = data[0].assets
-        .filter((el) => el.name.indexOf(getOs()) !== -1)
-        .map((el) => el.browser_download_url);
+export async function autoUpdater(): Promise<void> {
+    // Only check once per app launch, on the first room-list view.
+    if (checkDone) return;
+    checkDone = true;
+    try {
+        const res = await fetch(URL.releases + '?per_page=1', {
+            method: "GET",
+            headers: {
+                Authorization: 'Bearer ' + URL.release_token,
+                Accept: "application/vnd.github.v3+json",
+            },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data || !data.length) return;
+        const latest = data[0];
+        const tag = String(latest.tag_name || '');
+        const current = `v${await window.electronAPI.getAppVersion()}`;
+        if (compareVersions(tag, current) <= 0) return;
 
-    const latest = {
-        version: data[0].tag_name,
-        url: {
-            standard: urls.find((el) => el.indexOf("Lite") === -1),
-            lite: urls.find((el) => el.indexOf("Lite") !== -1),
-        },
-        notes: data[0].body,
-        date: data[0].published_at.substr(0, 10),
-    };
+        const asset = (latest.assets || []).find((a: any) => /-x64\.exe$/i.test(a.name));
+        if (!asset) return;
 
-    return latest;
-}
+        // ── Fully automatic: download the new exe, then relaunch into it ──
+        const assetUrl = `https://api.github.com/repos/2Gbps/AtomHax/releases/assets/${asset.id}`;
 
-export async function autoUpdater() {
-    const latest = await checkLatestRelease();
-    const current_version = `v${await window.electronAPI.getAppVersion()}`;
+        const container = document.createElement('div');
+        container.style.cssText = 'text-align:center;font-size:13px;color:rgba(255,255,255,0.85);min-width:260px;';
 
-    if (latest.version !== current_version) {
-        // add a button to the header
-        const rightContainer = document.getElementsByClassName("right-container")[0];
-        if (!rightContainer.querySelector(".new-update-header-link")){
-            const newVersion = document.createElement("a");
-            newVersion.textContent = "🔥 New update available!"
-            newVersion.href = ""
-            newVersion.classList.add("new-update-header-link");
-            newVersion.addEventListener("click", function(event) {
-                event.preventDefault();  // Prevent the link from navigating
-                newVersionAlert(latest);
-            });
-            // firstChild is the current profile element
-            rightContainer.insertBefore(newVersion, rightContainer.firstChild);
-        }
+        const label = document.createElement('div');
+        label.textContent = `Updating to ${tag}...`;
+
+        const bar = document.createElement('div');
+        bar.style.cssText = 'height:8px;background:rgba(255,255,255,0.1);border-radius:4px;margin-top:12px;overflow:hidden;';
+
+        const fill = document.createElement('div');
+        fill.style.cssText = 'height:100%;width:0%;background:#4a9eff;border-radius:4px;transition:width .2s;';
+        bar.appendChild(fill);
+
+        const pctText = document.createElement('div');
+        pctText.style.cssText = 'margin-top:6px;font-size:11px;color:rgba(255,255,255,0.5);';
+
+        container.appendChild(label);
+        container.appendChild(bar);
+        container.appendChild(pctText);
+
+        customAlert('Update', container, []);
+
+        window.electronAPI.onUpdateProgress((pct: number) => {
+            fill.style.width = pct + '%';
+            pctText.textContent = pct + '%';
+        });
+        window.electronAPI.onUpdateDone((exePath: string) => {
+            closeCustomAlert();
+            window.electronAPI.relaunchUpdate(exePath);
+        });
+
+        window.electronAPI.startUpdate({ url: assetUrl, fileName: asset.name, token: URL.release_token, tag });
+    } catch (e) {
+        // Silent — offline or API error shouldn't disturb the game.
     }
 }

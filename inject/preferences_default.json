@@ -1,22 +1,12 @@
 {
-	"fps_unlock": false,
+	"fps_unlock": true,
+	"render_scale": 100,
+	"fps_limit": 360,
+	"tick_mult": 20,
 	"notes": [],
-	"transp_ui": false,
 	"shortcuts": [
 	  ["/e", "/extrapolation "],
 	  ["/a", "/avatar "]
 	],
-	"profiles": [
-	  {
-		"id": "default",
-		"name": "Default",
-		"autosave": true,
-		"avatar": null,
-		"extrapolation": null,
-		"fav_rooms": [],
-		"geo_override": null,
-		"player_auth_key": null,
-		"player_name": null
-	  }
-	]
+	"discord_rpc": true
   }

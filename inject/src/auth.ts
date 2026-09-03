@@ -1,6 +1,5 @@
 import { customAlert } from "./alerts";
 import { createButton } from "./utils";
-import { Profile } from "./profiles"
 
 export const authShowAlert = (publicAuth: string, privateKey: string) => {
 	const publicAuthButton = document.createElement('button');
@@ -57,18 +56,7 @@ export const resetAuthAlert = (): void => {
 		"Confirm Reset",
 		"#b2413b", "#D04D46",
 		async () => {
-			const prefs = await window.electronAPI.getAppPreferences();
-			const profiles = prefs["profiles"];
 			const newAuth = await window.electronAPI.generatePlayerAuthKey();
-
-			const currentProfileIdx = profiles.findIndex(
-				(p: Profile) => p.id === localStorage.getItem("current_profile")
-			);
-			if (currentProfileIdx !== -1) {
-				profiles[currentProfileIdx].player_auth_key = newAuth;
-			}
-
-			await window.electronAPI.setAppPreference('profiles', profiles);
 			localStorage.setItem("player_auth_key", newAuth);
 
 			customAlert(

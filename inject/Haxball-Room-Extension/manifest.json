@@ -1,9 +1,9 @@
 {
 	"manifest_version": 3,
 	"name": "Haxball All-in-one Tool",
-	"version": "0.4.8",
+	"version": "0.5.1",
 	"author": "xenon",
-	"description": "Tools for searching rooms, auto refreshing and joining rooms, admin kick/ban shortcuts, and local-muting of other players",
+	"description": "Room search, auto join, local mute, camera views, and link formatting for HaxBall",
 	"content_scripts": [
 		{
 			"matches": [
@@ -13,16 +13,8 @@
 				"css/filter_button.css"
 			],
 			"js": [
-				"js/content_utility/copyright.js",
 				"js/content_utility/search_bar.js",
 				"js/content_utility/auto_join.js",
-				"js/content_utility/admin_kick_or_ban.js",
-				"js/content_utility/toggle_chat.js",
-				"js/content_utility/addon_settings.js",
-				"js/content_utility/transparent_chat.js",
-				"js/content_utility/chat_properties.js",
-				"js/content_utility/emojis.js",
-				"js/content_utility/translate_disclaimer.js",
 				"js/content.js"
 			],
 			"run_at": "document_idle"
@@ -34,27 +26,18 @@
 	"icons": {
 		"48": "icons/icon.png"
 	},
-	"options_ui": {
-		"page": "new_option.html",
-		"open_in_tab": true
-	},
-	"background": {
-		"service_worker": "js/background.js"
-	},
+	"permissions": [
+		"storage"
+	],
 	"web_accessible_resources": [
 		{
 			"resources": [
-				"emoji_lookup.html",
-				"js/emoji_lookup.js",
-				"css/filter_button.css"
+				"lib/elements.flagmeister.min.js",
+				"flags/*"
 			],
 			"matches": [
 				"https://*.haxball.com/*"
 			]
 		}
-	],
-	"permissions": [
-		"notifications",
-		"storage"
 	]
 }

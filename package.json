@@ -1,47 +1,37 @@
 {
-  "name": "haxball-client",
-  "version": "0.5.0",
+  "name": "atomhax",
+  "version": "0.1.3-b",
   "main": "main.js",
   "private": true,
   "scripts": {
     "build:ts": "esbuild inject/src/inject.ts --bundle --outfile=inject/inject.js --format=iife --minify",
-    "build:mac": "electron-builder --mac",
-    "build:win-x64": "electron-builder --win --x64",
-    "build:win-ia32": "electron-builder --win --ia32",
-    "build:win-arm64": "electron-builder --win --arm64",
-    "build:linux-appimage": "electron-builder --linux AppImage --x64",
-    "build:linux-deb": "electron-builder --linux deb --x64",
-    "build": "npm run build:ts && sh build.sh",
-    "test": "npm run build:mac && ./dist/mac-universal/HaxBall\\ Client.app/Contents/MacOS/HaxBall\\ Client"
+    "build:win-x64-fast": "electron-builder --win portable --x64 --config.compression=maximum"
   },
-  "keywords": [
-    "haxball",
-    "haxball-client"
-  ],
-  "author": "og <73192436+oghb@users.noreply.github.com> (https://github.com/oghb/)",
+  "author": "AtomHax",
   "license": "GPL-3.0",
-  "homepage": "https://github.com/oghb/haxball-client",
-  "email": "73192436+oghb@users.noreply.github.com",
-  "description": "",
+  "description": "AtomHax - HaxBall Client",
   "devDependencies": {
-    "electron": "18.2.0",
-    "electron-builder": "25.1.8",
-    "esbuild": "0.25.3"
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2"
   },
   "build": {
-    "appId": "com.haxball.client",
-    "productName": "HaxBall Client",
-    "asarUnpack": "inject/Haxball-Room-Extension/",
+    "appId": "com.atomhax.client",
+    "productName": "AtomHax",
     "compression": "maximum",
+    "npmRebuild": false,
+    "asar": true,
+    "asarUnpack": ["inject/Haxball-Room-Extension/"],
     "files": [
       "main.js",
       "preload.js",
+      "recaptchasolve.js",
       "inject/inject.js",
       "inject/Haxball-Room-Extension/",
-      "inject/preferences_default.json"
+      "inject/preferences_default.json",
+      "patched/game-min.js"
     ],
     "mac": {
-      "category": "public.app-category.games",
       "icon": "assets/icon.png",
       "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
       "target": {
@@ -50,12 +40,12 @@
       }
     },
     "win": {
-      "icon": "assets/icon.png",
+      "icon": "assets/icon.ico",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "target": [
         {
           "target": "portable",
-          "arch": "arm64"
+          "arch": "x64"
         }
       ]
     },
@@ -76,6 +66,7 @@
   },
   "dependencies": {
     "discord-rpc": "^4.0.1",
-    "zod": "^3.24.3"
+    "mpg123-decoder": "^1.0.3",
+    "zod": "^4.4.3"
   }
 }
