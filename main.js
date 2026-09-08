@@ -1752,7 +1752,6 @@ ipcMain.on('open-external', (_e, url) => {
 // update:available to the renderer, which shows the progress modal and
 // starts the download. ──
 const UPDATE_REPO = '2Gbps/AtomHax';
-const UPDATE_TOKEN = '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';
 
 const compareVersions = (a, b) => {
   const nums = (v) => (v.replace(/^v/i, '').split('-')[0] || '').split('.').map((n) => parseInt(n, 10) || 0);
@@ -1771,7 +1770,6 @@ const checkForUpdates = (win) => {
     https.get('https://api.github.com/repos/' + UPDATE_REPO + '/releases?per_page=1', {
       headers: {
         'User-Agent': 'AtomHax',
-        'Authorization': 'Bearer ' + UPDATE_TOKEN,
         'Accept': 'application/vnd.github.v3+json'
       }
     }, (res) => {
@@ -1785,7 +1783,10 @@ const checkForUpdates = (win) => {
           const latest = data[0];
           const tag = String(latest.tag_name || '');
           if (compareVersions(tag, 'v' + version) <= 0) return;
-          const asset = (latest.assets || []).find((a) => /-x64\.exe$/i.test(a.name));
+          const assets = latest.assets || [];
+          const asset = assets.find((a) => /-x64\.exe$/i.test(a.name))
+                     || assets.find((a) => /x64/i.test(a.name) && /\.exe$/i.test(a.name))
+                     || assets.find((a) => /\.exe$/i.test(a.name));
           if (!asset) return;
           if (win && !win.isDestroyed()) {
             win.webContents.send('update:available', {
@@ -1805,18 +1806,19 @@ ipcMain.on('update:start', (_e, payload) => {
   const url = payload && payload.url;
   const fileName = payload && payload.fileName;
   const token = payload && payload.token;
-  if (!url || !fileName || !token) return;
+  if (!url || !fileName) return;
   const targetDir = process.env.PORTABLE_EXECUTABLE_DIR || app.getPath('userData');
   const targetPath = path.join(targetDir, fileName);
   let received = 0, total = 0;
   const fetchAsset = (assetUrl, redirects) => {
     if (redirects > 5) return;
+    const dlHeaders = {
+      'User-Agent': 'AtomHax',
+      'Accept': 'application/octet-stream'
+    };
+    if (token) dlHeaders['Authorization'] = 'Bearer ' + token;
     https.get(assetUrl, {
-      headers: {
-        'User-Agent': 'AtomHax',
-        'Authorization': 'Bearer ' + token,
-        'Accept': 'application/octet-stream'
-      }
+      headers: dlHeaders
     }, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         res.resume();

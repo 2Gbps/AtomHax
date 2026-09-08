@@ -1,5 +1,4 @@
 import { closeCustomAlert, customAlert } from "./alerts";
-import { URL } from "./constants";
 
 let registered = false;
 
@@ -8,6 +7,18 @@ let registered = false;
 export function autoUpdater(): void {
     if (registered) return;
     registered = true;
+
+    window.electronAPI.onUpdateProgress((pct: number) => {
+        const fill = document.getElementById("update-bar-fill") as HTMLDivElement | null;
+        const pctText = document.getElementById("update-pct-text") as HTMLDivElement | null;
+        if (fill) fill.style.width = pct + "%";
+        if (pctText) pctText.textContent = pct + "%";
+    });
+
+    window.electronAPI.onUpdateDone((exePath: string) => {
+        closeCustomAlert();
+        window.electronAPI.relaunchUpdate(exePath);
+    });
 
     window.electronAPI.onUpdateAvailable((info: { tag: string; assetUrl: string; fileName: string }) => {
         const tag = info.tag;
@@ -34,15 +45,6 @@ export function autoUpdater(): void {
 
         customAlert('Update', container, []);
 
-        window.electronAPI.onUpdateProgress((pct: number) => {
-            fill.style.width = pct + '%';
-            pctText.textContent = pct + '%';
-        });
-        window.electronAPI.onUpdateDone((exePath: string) => {
-            closeCustomAlert();
-            window.electronAPI.relaunchUpdate(exePath);
-        });
-
-        window.electronAPI.startUpdate({ url: info.assetUrl, fileName: info.fileName, token: URL.release_token, tag });
+        window.electronAPI.startUpdate({ url: info.assetUrl, fileName: info.fileName, tag });
     });
 }
