@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AtomHax — a faster HaxBall client</title>
+<meta name="description" content="AtomHax is a native desktop client for HaxBall with unlocked FPS, user scripting, and a cleaner UI. Stock rendering, no visual changes to the game." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='6' fill='%23ff4438'/%3E%3Cellipse cx='16' cy='16' rx='14' ry='5.5' fill='none' stroke='%23e8e6e1' stroke-width='1.4' transform='rotate(-24 16 16)'/%3E%3C/svg%3E" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #101014;
+    --bg-raise: #16161c;
+    --line: rgba(255, 255, 255, 0.09);
+    --text: #e8e6e1;
+    --dim: #83828b;
+    --red: #ff4438;
+    --blue: #4d7dff;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, Menlo, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  ::selection { background: var(--red); color: #fff; }
+  a { color: inherit; text-decoration: none; }
+
+  .wrap { width: min(1160px, calc(100% - 48px)); margin: 0 auto; }
+
+  /* ─── header ─── */
+  header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    border-bottom: 1px solid transparent;
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+  header.scrolled {
+    background: rgba(16, 16, 20, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-color: var(--line);
+  }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 15px; letter-spacing: 0.02em; }
+  .brand-mark { width: 18px; height: 18px; border-radius: 50%; background: var(--red); position: relative; }
+  .brand-mark::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    border: 1px solid var(--red);
+    border-radius: 50%;
+    transform: rotate(-24deg) scaleY(0.42);
+  }
+  .nav-links { display: flex; gap: 28px; font-size: 13.5px; color: var(--dim); }
+  .nav-links a { transition: color 0.2s ease; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-cta {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+  .nav-cta:hover { border-color: rgba(255, 255, 255, 0.28); background: var(--bg-raise); }
+
+  /* ─── hero ─── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding: 120px 0 80px;
+  }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; align-items: center; gap: 48px; }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dim);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .kicker::before { content: ""; width: 24px; height: 1px; background: var(--red); }
+  .hero h1 {
+    margin-top: 22px;
+    font-size: clamp(44px, 6.4vw, 84px);
+    line-height: 1.02;
+    font-weight: 680;
+    letter-spacing: -0.035em;
+  }
+  .hero h1 .thin { color: var(--dim); font-weight: 500; }
+  .hero-sub { margin-top: 26px; max-width: 46ch; color: var(--dim); font-size: 17px; }
+  .hero-sub strong { color: var(--text); font-weight: 550; }
+  .hero-actions { margin-top: 40px; display: flex; align-items: center; gap: 18px; }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--red);
+    color: #fff;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 14px 26px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s ease;
+  }
+  .btn-primary:hover { background: #ff5a4e; transform: translateY(-2px); }
+  .btn-ghost {
+    font-size: 14.5px;
+    color: var(--dim);
+    padding: 14px 4px;
+    border-bottom: 1px solid var(--line);
+    transition: color 0.2s ease, border-color 0.2s ease;
+  }
+  .btn-ghost:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.3); }
+  .hero-meta { margin-top: 48px; display: flex; font-family: var(--mono); font-size: 12px; color: var(--dim); }
+  .hero-meta div { padding: 0 22px; border-left: 1px solid var(--line); }
+  .hero-meta div:first-child { padding-left: 0; border-left: none; }
+  .hero-meta b { display: block; color: var(--text); font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+
+  /* ─── 3d atom ─── */
+  .atom-scene {
+    height: 560px;
+    perspective: 1000px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .atom { position: relative; width: 0; height: 0; transform-style: preserve-3d; }
+  .nucleus { transform-style: preserve-3d; position: absolute; }
+  .nucleon {
+    position: absolute;
+    width: 34px; height: 34px;
+    margin: -17px 0 0 -17px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 30%, #ff9d94 0%, var(--red) 45%, #8f1d16 100%);
+    box-shadow: inset -4px -6px 10px rgba(0, 0, 0, 0.45);
+  }
+  .neutron {
+    background: radial-gradient(circle at 32% 30%, #9c9aa4 0%, #55545c 45%, #232228 100%);
+    box-shadow: inset -4px -6px 10px rgba(0, 0, 0, 0.5);
+  }
+  .ring {
+    position: absolute;
+    width: 440px; height: 440px;
+    margin: -220px 0 0 -220px;
+    border: 1px solid rgba(232, 230, 225, 0.28);
+    border-radius: 50%;
+    transform-style: preserve-3d;
+  }
+  .ring::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border: 1px solid transparent;
+    border-top-color: rgba(232, 230, 225, 0.5);
+    border-radius: 50%;
+  }
+  .electron {
+    position: absolute;
+    top: -9px; left: 50%;
+    width: 18px; height: 18px;
+    margin-left: -9px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 28%, #dfe6ff 0%, #8fb0ff 45%, #27417e 100%);
+    box-shadow: inset -2px -3px 5px rgba(0, 0, 0, 0.4);
+  }
+  .electron.alt { width: 15px; height: 15px; margin-left: -7.5px; top: -7.5px; }
+  .electron.flip { top: auto; bottom: -7.5px; }
+  .atom-caption {
+    position: absolute;
+    bottom: 12%;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  /* ─── sections ─── */
+  section.feature { padding: 140px 0; border-top: 1px solid var(--line); }
+  .section-head { display: flex; align-items: baseline; gap: 26px; margin-bottom: 64px; }
+  .section-num { font-family: var(--mono); font-size: 13px; color: var(--red); letter-spacing: 0.1em; }
+  .section-head h2 {
+    font-size: clamp(30px, 4vw, 48px);
+    font-weight: 650;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
+  }
+  .section-head .desc { margin-left: auto; max-width: 34ch; color: var(--dim); font-size: 15px; align-self: center; }
+
+  /* ─── fps ─── */
+  .fps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+  .fps-big {
+    font-family: var(--mono);
+    font-size: clamp(72px, 9vw, 128px);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+  .fps-big small { font-size: 0.32em; color: var(--dim); letter-spacing: 0.08em; margin-left: 10px; }
+  .fps-note { color: var(--dim); margin-top: 18px; max-width: 44ch; }
+  .fps-note strong { color: var(--text); font-weight: 550; }
+  .fps-list { margin-top: 34px; display: grid; gap: 14px; counter-reset: li; }
+  .fps-item { display: flex; gap: 14px; align-items: baseline; font-size: 14.5px; color: var(--dim); }
+  .fps-item::before {
+    content: counter(li, decimal-leading-zero);
+    counter-increment: li;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--red);
+  }
+  .fps-chart { border: 1px solid var(--line); border-radius: 12px; background: var(--bg-raise); padding: 34px; }
+  .fps-bar-row { margin-bottom: 30px; }
+  .fps-bar-row:last-child { margin-bottom: 0; }
+  .fps-bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--dim);
+    margin-bottom: 10px;
+  }
+  .fps-bar-label b { color: var(--text); font-weight: 500; }
+  .fps-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+  .fps-bar i { display: block; height: 100%; width: 0%; border-radius: 4px; background: var(--red); }
+  .fps-bar.stock i { background: #3c3b45; }
+  .fps-chart-foot {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--dim);
+    line-height: 1.6;
+  }
+
+  /* ─── scripting ─── */
+  .code-window { border: 1px solid var(--line); border-radius: 12px; background: #131318; overflow: hidden; }
+  .code-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .code-titlebar .dots { display: flex; gap: 6px; margin-right: 8px; }
+  .code-titlebar .dots i { width: 10px; height: 10px; border-radius: 50%; }
+  .code-titlebar .dots i:nth-child(1) { background: #5a2724; }
+  .code-titlebar .dots i:nth-child(2) { background: #55503a; }
+  .code-titlebar .dots i:nth-child(3) { background: #2c4a35; }
+  .code-titlebar .path { margin-left: 6px; }
+  pre { margin: 0; padding: 26px 0; font-family: var(--mono); font-size: 13.2px; line-height: 1.75; overflow-x: auto; }
+  .code-line { display: block; padding: 0 26px; white-space: pre; }
+  .code-line .ln { display: inline-block; width: 34px; color: #3a3943; user-select: none; }
+  .c-com { color: #5d5c66; }
+  .c-kw  { color: #ff7a6e; }
+  .c-fn  { color: #7da7ff; }
+  .c-str { color: #b7c79a; }
+  .c-var { color: #e8e6e1; }
+  .c-dim { color: #9a99a2; }
+
+  .script-notes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 56px;
+  }
+  .script-note { background: var(--bg-raise); padding: 28px; }
+  .script-note h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+  .script-note p { font-size: 14px; color: var(--dim); }
+  .script-note code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
+  /* ─── ui section ─── */
+  .style-stage { position: relative; height: 460px; display: flex; align-items: center; justify-content: center; }
+  .glass-card {
+    position: absolute;
+    width: 340px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: linear-gradient(135deg, rgba(27,33,37,0.85) 0%, rgba(27,33,37,0.7) 50%, rgba(27,33,37,0.8) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    padding: 22px;
+  }
+  .glass-card.roster { top: 40px; left: 12%; z-index: 3; }
+  .glass-card.room { bottom: 30px; right: 12%; z-index: 4; }
+  .glass-card .card-title {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 14px;
+  }
+  .glass-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    background: rgba(17, 22, 25, 0.55);
+    margin-bottom: 6px;
+  }
+  .glass-row:last-child { margin-bottom: 0; }
+  .dot-team { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .glass-row .ping { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  .style-cols {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .style-col { background: var(--bg-raise); padding: 30px 28px; }
+  .style-col h3 { font-size: 15px; font-weight: 600; margin: 14px 0 8px; }
+  .style-col p { font-size: 14px; color: var(--dim); }
+  .style-col .tag { font-family: var(--mono); font-size: 11px; color: var(--blue); letter-spacing: 0.08em; }
+
+  /* ─── download ─── */
+  section.download { border-top: 1px solid var(--line); padding: 160px 0 140px; text-align: center; position: relative; overflow: hidden; }
+  .download h2 { font-size: clamp(40px, 5.6vw, 72px); font-weight: 680; letter-spacing: -0.035em; line-height: 1.04; }
+  .download p.sub { color: var(--dim); margin-top: 18px; font-size: 16.5px; }
+  .dl-zone { margin-top: 64px; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+  .btn-download {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    font-family: var(--sans);
+    font-size: 17px;
+    font-weight: 650;
+    color: var(--text);
+    background: var(--bg-raise);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    padding: 20px 42px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s ease, background 0.25s ease;
+  }
+  .btn-download .sweep {
+    position: absolute;
+    top: 0; left: 0;
+    width: 40%; height: 100%;
+    background: linear-gradient(105deg, transparent 0%, rgba(255, 68, 56, 0.22) 50%, transparent 100%);
+    transform: translateX(-120%);
+    pointer-events: none;
+  }
+  .btn-download:hover { border-color: var(--red); background: #1b1b22; transform: translateY(-3px); }
+  .btn-download .dl-icon { width: 20px; height: 20px; stroke: var(--red); stroke-width: 2; fill: none; }
+  .btn-download .dl-size { font-family: var(--mono); font-size: 12px; font-weight: 400; color: var(--dim); }
+  .dl-sub { font-family: var(--mono); font-size: 12px; color: var(--dim); }
+  .dl-sub a { color: var(--text); border-bottom: 1px solid var(--line); }
+  .dl-sub a:hover { border-color: var(--red); }
+
+  footer { border-top: 1px solid var(--line); padding: 44px 0; }
+  .foot { display: flex; align-items: center; justify-content: space-between; font-size: 13.5px; color: var(--dim); }
+  .foot-links { display: flex; gap: 26px; }
+  .foot-links a { color: var(--dim); transition: color 0.2s; }
+  .foot-links a:hover { color: var(--text); }
+
+  .reveal { opacity: 0; transform: translateY(26px); }
+
+  @media (max-width: 980px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 12px; }
+    .atom-scene { height: 420px; order: -1; }
+    .atom-scene .ring { width: 320px; height: 320px; margin: -160px 0 0 -160px; }
+    .fps-grid { grid-template-columns: 1fr; gap: 44px; }
+    .script-notes, .style-cols { grid-template-columns: 1fr; }
+    .section-head { flex-wrap: wrap; gap: 14px; }
+    .section-head .desc { margin-left: 0; max-width: 100%; }
+    .nav-links { display: none; }
+    .glass-card.roster { left: 4%; }
+    .glass-card.room { right: 4%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<header id="site-header">
+  <div class="wrap nav">
+    <a class="brand" href="#top">
+      <span class="brand-mark"></span>
+      AtomHax
+    </a>
+    <nav class="nav-links">
+      <a href="#fps">FPS</a>
+      <a href="#scripting">Scripting</a>
+      <a href="#style">UI</a>
+      <a href="scripting.html">Scripting API</a>
+    </nav>
+    <a class="nav-cta" href="#download">Download</a>
+  </div>
+</header>
+
+<!-- ═══════════ HERO ═══════════ -->
+<section class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <div class="kicker">HaxBall desktop client · Windows</div>
+      <h1>The game you know.<br /><span class="thin">A client that</span> keeps up.</h1>
+      <p class="hero-sub">
+        AtomHax is a native HaxBall client built on Electron. <strong>Unlocked frame rate</strong>,
+        <strong>user scripting</strong>, and a rebuilt interface — while the game itself renders exactly
+        like the default: same stadium lines, same player outlines, same physics.
+      </p>
+      <div class="hero-actions">
+        <a class="btn-primary" href="#download">Get AtomHax
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a class="btn-ghost" href="scripting.html">Read the scripting API</a>
+      </div>
+      <div class="hero-meta">
+        <div><b>900+</b>fps ceiling</div>
+        <div><b>0</b>render changes</div>
+        <div><b>v0.5.0</b>build</div>
+      </div>
+    </div>
+
+    <div class="atom-scene" id="atom-scene" aria-hidden="true">
+      <div class="atom" id="atom">
+        <div class="nucleus" id="nucleus"></div>
+        <div class="ring" id="ring-a"><div class="electron"></div></div>
+        <div class="ring" id="ring-b"><div class="electron alt"></div></div>
+        <div class="ring" id="ring-c"><div class="electron"></div><div class="electron alt flip"></div></div>
+      </div>
+      <div class="atom-caption">atomhax · rendering stock haxball</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 01 · FPS ═══════════ -->
+<section class="feature" id="fps">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <h2 class="reveal">Frame rate,<br />unlocked.</h2>
+      <p class="desc reveal">The game loop is no longer welded to 60fps. AtomHax lifts the rAF cap and keeps the present queue short enough that the compositor always shows the newest frame.</p>
+    </div>
+    <div class="fps-grid">
+      <div>
+        <div class="fps-big"><span id="fps-counter">0</span><small>fps ceiling</small></div>
+        <p class="fps-note reveal">
+          Vanilla HaxBall throttles <strong>requestAnimationFrame</strong> to your monitor's refresh.
+          AtomHax patches the gameframe's rAF directly — inside the iframe realm, where the game
+          actually schedules — and keeps vsync on so the present queue never backs up.
+        </p>
+        <div class="fps-list reveal">
+          <div class="fps-item">rAF unlocked per-iframe — the patch overrides the realm the game loop lives in</div>
+          <div class="fps-item">Game-loop tick multiplier: more simulation steps per compositor frame</div>
+          <div class="fps-item">Canvas rendering untouched — stadium and player lines identical to vanilla</div>
+          <div class="fps-item">Optional hard cap (240 / 360fps) for GPUs that can't drain the present queue</div>
+        </div>
+      </div>
+      <div class="fps-chart" id="fps-chart">
+        <div class="fps-bar-row">
+          <div class="fps-bar-label"><span>Vanilla browser, 60Hz display</span><b>60</b></div>
+          <div class="fps-bar stock"><i data-w="7"></i></div>
+        </div>
+        <div class="fps-bar-row">
+          <div class="fps-bar-label"><span>AtomHax, 144Hz display</span><b>144</b></div>
+          <div class="fps-bar"><i data-w="16"></i></div>
+        </div>
+        <div class="fps-bar-row">
+          <div class="fps-bar-label"><span>AtomHax, 240Hz display</span><b>240</b></div>
+          <div class="fps-bar"><i data-w="27"></i></div>
+        </div>
+        <div class="fps-bar-row">
+          <div class="fps-bar-label"><span>AtomHax, unlimited (mid-range GPU)</span><b>~900</b></div>
+          <div class="fps-bar"><i data-w="100"></i></div>
+        </div>
+        <div class="fps-chart-foot">
+          Measured with the built-in frame-time HUD. Ceiling depends on GPU raster
+          throughput and monitor refresh; the simulation never runs faster than the server.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 02 · SCRIPTING ═══════════ -->
+<section class="feature" id="scripting">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-num">02</span>
+      <h2 class="reveal">Scripting that<br />runs in-process.</h2>
+      <p class="desc reveal">Tampermonkey-style scripts load from disk, inject into the right JS realm automatically, and get a bridge straight into the running engine.</p>
+    </div>
+    <div class="code-window" id="code-window">
+      <div class="code-titlebar">
+        <span class="dots"><i></i><i></i><i></i></span>
+        my-first-script.js
+        <span class="path">— injected into gameframe</span>
+      </div>
+      <pre id="code-body"><span class="code-line"><span class="ln">1</span><span class="c-com">// ==UserScript==</span></span><span class="code-line"><span class="ln">2</span><span class="c-com">// @name       Ball proximity alert</span></span><span class="code-line"><span class="ln">3</span><span class="c-com">// @noframes   true</span></span><span class="code-line"><span class="ln">4</span><span class="c-com">// ==/UserScript==</span></span><span class="code-line"><span class="ln">5</span></span><span class="code-line"><span class="ln">6</span><span class="c-kw">const</span> <span class="c-var">g</span> = <span class="c-var">window</span>.parent.<span class="c-var">g</span>;</span><span class="code-line"><span class="ln">7</span><span class="c-kw">const</span> <span class="c-var">beep</span> = <span class="c-kw">new</span> Audio(<span class="c-str">"ping.mp3"</span>);</span><span class="code-line"><span class="ln">8</span></span><span class="code-line"><span class="ln">9</span><span class="c-fn">setInterval</span>(() => {</span><span class="code-line"><span class="ln">10</span>  <span class="c-kw">const</span> <span class="c-var">s</span> = g.<span class="c-fn">snap</span>();</span><span class="code-line"><span class="ln">11</span>  <span class="c-kw">if</span> (!s.ok || !s.me || !s.ball) <span class="c-kw">return</span>;</span><span class="code-line"><span class="ln">12</span>  <span class="c-kw">const</span> <span class="c-var">d</span> = Math.hypot(s.ball.x - s.me.x, s.ball.y - s.me.y);</span><span class="code-line"><span class="ln">13</span>  <span class="c-kw">if</span> (d &lt; <span class="c-dim">45</span>) beep.<span class="c-fn">play</span>();</span><span class="code-line"><span class="ln">14</span>}, <span class="c-dim">100</span>);</span></pre>
+    </div>
+    <div class="script-notes" id="script-notes">
+      <div class="script-note">
+        <h3>Right realm, first load</h3>
+        <p>Scripts marked <code>@noframes</code> run in the top-level page; everything else injects straight into the gameframe's JS context via <code>WebFrameMain.executeJavaScript</code> on <code>did-frame-finish-load</code> — no cross-origin workarounds, no silent no-ops.</p>
+      </div>
+      <div class="script-note">
+        <h3>Engine bridge</h3>
+        <p>The shipped engine installs <code>window.parent.g</code>: <code>snap()</code> for positions, <code>in()/out()</code> for input masks, <code>opGet()/opSet()</code> for power. Your script polls real match state — ball, players, field, frame number.</p>
+      </div>
+      <div class="script-note">
+        <h3>Managed in the client</h3>
+        <p>Import, enable/disable, delete, and reload from the sidebar. Scripts persist in <code>scripts.json</code>; toggling one only requires the built-in gameframe reload — no app restart.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 03 · UI ═══════════ -->
+<section class="feature" id="style">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-num">03</span>
+      <h2 class="reveal">A modern shell<br />around the game.</h2>
+      <p class="desc reveal">The chrome is rebuilt — translucent panels, a collapsible sidebar, emoji autocomplete, favorites. The canvas stays untouched.</p>
+    </div>
+    <div class="style-stage" id="style-stage" aria-hidden="true">
+      <div class="glass-card roster">
+        <div class="card-title">room · red team</div>
+        <div class="glass-row"><span class="dot-team" style="background:#e56e56"></span>kapselon <span class="ping">23ms</span></div>
+        <div class="glass-row"><span class="dot-team" style="background:#e56e56"></span>yoshimitsu <span class="ping">31ms</span></div>
+        <div class="glass-row"><span class="dot-team" style="background:#e56e56"></span>the.machine <span class="ping">44ms</span></div>
+      </div>
+      <div class="glass-card room">
+        <div class="card-title">controls</div>
+        <div class="glass-row">Start game</div>
+        <div class="glass-row">Pause</div>
+        <div class="glass-row">Pick stadium</div>
+      </div>
+    </div>
+    <div class="style-cols" id="style-cols">
+      <div class="style-col">
+        <span class="tag">SHELL</span>
+        <h3>Liquid glass panels</h3>
+        <p>Room lists, dialogs, scoreboard, and chat get a single translucent surface language. Depth without decoration.</p>
+      </div>
+      <div class="style-col">
+        <span class="tag">QUALITY OF LIFE</span>
+        <h3>Built-ins</h3>
+        <p>Room search bar, favorite rooms, emoji shortcuts, avatar flags, chat resizing that doesn't stutter, Discord presence.</p>
+      </div>
+      <div class="style-col">
+        <span class="tag">GAME VIEW</span>
+        <h3>Canvas: stock</h3>
+        <p>Stadium lines, player outlines, and physics are the default game, unchanged. If a patch touches a pixel of gameplay, it doesn't ship.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ DOWNLOAD ═══════════ -->
+<section class="download" id="download">
+  <div class="wrap">
+    <span class="kicker" style="justify-content:center;">Download · Windows x64 · portable</span>
+    <h2 style="margin-top:20px;">One exe.<br />No installer.</h2>
+    <p class="sub">Grab the build, run it, log into HaxBall like you always do. Everything stays in %APPDATA%.</p>
+    <div class="dl-zone">
+      <a class="btn-download" id="btn-download" href="#" download>
+        <span class="sweep"></span>
+        <svg class="dl-icon" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Download AtomHax
+        <span class="dl-size">v0.5.0 · portable</span>
+      </a>
+      <div class="dl-sub">Older builds and the changelog live in the repo · <a href="scripting.html">scripting API docs</a></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <span>AtomHax — open source, GPL-3.0. Not affiliated with HaxBall.</span>
+    <nav class="foot-links">
+      <a href="#fps">FPS</a>
+      <a href="#scripting">Scripting</a>
+      <a href="scripting.html">API</a>
+    </nav>
+  </div>
+</footer>
+
+<script type="module">
+  import {
+    animate, createTimeline, onScroll, stagger, utils,
+  } from "https://cdn.jsdelivr.net/npm/animejs@4.0.2/lib/anime.esm.min.js";
+
+  /* ─────────────────────────────────────────────────────────────
+     RELEASE_URL — set this once, after the repo is on GitHub:
+     https://github.com/<user>/<repo>/releases/latest/download/<exe-name>
+     Everything below reads it. While unset, the button shows a hint.
+     ───────────────────────────────────────────────────────────── */
+  const RELEASE_URL = "https://github.com/2Gbps/AtomHax/releases/latest/download/AtomHax-0.5.0.exe";
+
+  const dlBtn = document.getElementById("btn-download");
+  if (RELEASE_URL) {
+    dlBtn.href = RELEASE_URL;
+  } else {
+    dlBtn.addEventListener("click", (e) => {
+      if (dlBtn.getAttribute("href") === "#") {
+        e.preventDefault();
+        dlBtn.querySelector(".dl-size").textContent = "set RELEASE_URL in index.html";
+      }
+    });
+  }
+
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ── header state ── */
+  const header = document.getElementById("site-header");
+  const onHeaderScroll = () => header.classList.toggle("scrolled", window.scrollY > 8);
+  window.addEventListener("scroll", onHeaderScroll, { passive: true });
+  onHeaderScroll();
+
+  /* ── build the atom ── */
+  // Nucleus: proton/neutron cluster packed around the center in 3D.
+  const nucleus = document.getElementById("nucleus");
+  const NUCLEONS = [
+    [0, 0, 0, "p"], [30, 8, -12, "n"], [-24, 14, 8, "p"], [12, -26, 4, "n"],
+    [-14, -20, -14, "p"], [20, 20, 16, "p"], [-6, 6, 24, "n"], [26, -12, -18, "p"],
+    [-30, -6, 14, "p"], [4, 30, -20, "n"], [-18, 24, -8, "p"], [16, -4, 28, "n"],
+  ];
+  for (const [x, y, z, kind] of NUCLEONS) {
+    const n = document.createElement("div");
+    n.className = "nucleon" + (kind === "n" ? " neutron" : "");
+    n.style.transform = `translate3d(${x}px, ${y}px, ${z}px)`;
+    nucleus.appendChild(n);
+  }
+
+  const atom = document.getElementById("atom");
+  const ringA = document.getElementById("ring-a");
+  const ringB = document.getElementById("ring-b");
+  const ringC = document.getElementById("ring-c");
+
+  /* ── fps counter (paused until its section scrolls in) ── */
+  const fpsCounter = document.getElementById("fps-counter");
+  const counterObj = { v: 0 };
+  const fpsCount = animate(counterObj, {
+    v: 900,
+    duration: 1600,
+    ease: "outExpo",
+    autoplay: false,
+    onUpdate: () => { fpsCounter.textContent = Math.round(counterObj.v); },
+  });
+
+  /* ── generic reveal animations (paused by default) ── */
+  const reveals = [];
+  document.querySelectorAll(".reveal").forEach((el) => {
+    if (reduced) return;
+    const a = animate(el, {
+      opacity: [0, 1],
+      translateY: [26, 0],
+      duration: 900,
+      ease: "outExpo",
+      autoplay: false,
+    });
+    reveals.push([el, a]);
+  });
+
+  /* ── chart bars ── */
+  const barAnims = [];
+  document.querySelectorAll("#fps-chart .fps-bar i").forEach((bar, i) => {
+    const a = animate(bar, {
+      width: `${bar.dataset.w}%`,
+      duration: 900,
+      ease: "outExpo",
+      delay: i * 120,
+      autoplay: false,
+    });
+    barAnims.push([bar, a]);
+  });
+
+  /* ── code lines ── */
+  const codeLines = document.querySelectorAll("#code-body .code-line");
+  let codeAnim = null;
+  if (!reduced) {
+    utils.set(codeLines, { opacity: 0, translateY: 12 });
+    codeAnim = animate(codeLines, {
+      opacity: 1,
+      translateY: 0,
+      duration: 550,
+      ease: "outQuad",
+      delay: stagger(70),
+      autoplay: false,
+    });
+  }
+
+  /* ── glass cards ── */
+  const roster = document.querySelector(".glass-card.roster");
+  const room = document.querySelector(".glass-card.room");
+  let rosterIn = null, roomIn = null;
+  if (!reduced) {
+    utils.set([roster, room], { opacity: 0, scale: 0.92 });
+    rosterIn = animate(roster, {
+      opacity: 1, scale: 1, translateY: [40, 0],
+      duration: 1100, ease: "outExpo", autoplay: false,
+    });
+    roomIn = animate(room, {
+      opacity: 1, scale: 1, translateY: [40, 0],
+      duration: 1100, ease: "outExpo", delay: 160, autoplay: false,
+    });
+  }
+
+  /* ── scroll observers (enter/leave callbacks — verified v4 API) ── */
+  onScroll({
+    target: "#fps .fps-big",
+    enter: "top bottom-=200",
+    onEnter: () => { counterObj.v = 0; fpsCount.restart(); },
+  });
+
+  for (const [el, a] of reveals) {
+    onScroll({
+      target: el,
+      enter: "top bottom-=60",
+      onEnter: () => a.play(),
+    });
+  }
+
+  onScroll({
+    target: "#fps-chart",
+    enter: "top bottom-=100",
+    onEnter: () => { for (const [, a] of barAnims) a.restart(); },
+  });
+
+  if (codeAnim) {
+    onScroll({
+      target: "#code-window",
+      enter: "top bottom-=140",
+      onEnter: () => codeAnim.play(),
+    });
+  }
+
+  if (rosterIn) {
+    onScroll({
+      target: "#style-stage",
+      enter: "top bottom-=120",
+      onEnter: () => { rosterIn.play(); roomIn.play(); },
+    });
+  }
+
+  /* Glass cards drift with scroll position — plain scroll math, no API risk. */
+  if (!reduced) {
+    const stage = document.getElementById("style-stage");
+    const drift = () => {
+      const r = stage.getBoundingClientRect();
+      const vh = window.innerHeight;
+      // 0 when the stage's top hits the viewport bottom, 1 when its bottom
+      // leaves the viewport top.
+      const p = Math.min(1, Math.max(0, (vh - r.top) / (vh + r.height)));
+      utils.set(roster, { translateY: -p * 30 });
+      utils.set(room, { translateY: p * 26 });
+    };
+    window.addEventListener("scroll", drift, { passive: true });
+    drift();
+  }
+
+  /* ── hero entrance (on load, not scroll) ── */
+  if (!reduced) {
+    utils.set(".hero .kicker, .hero h1, .hero-sub, .hero-actions, .hero-meta", { opacity: 0, translateY: 24 });
+    createTimeline({ defaults: { ease: "outExpo" } })
+      .add(atom, { opacity: [0, 1], scale: [0.6, 1], duration: 1400 }, 0)
+      .add(".hero .kicker", { opacity: 1, translateY: 0, duration: 700 }, 150)
+      .add(".hero h1", { opacity: 1, translateY: 0, duration: 900 }, 260)
+      .add(".hero-sub", { opacity: 1, translateY: 0, duration: 800 }, 420)
+      .add(".hero-actions", { opacity: 1, translateY: 0, duration: 800 }, 560)
+      .add(".hero-meta", { opacity: 1, translateY: 0, duration: 700 }, 700);
+
+    // Atom idle motion.
+    animate(atom, { rotateY: 360, duration: 26000, ease: "linear", loop: true });
+    animate(nucleus, { scale: [1, 1.06, 1], duration: 4200, ease: "inOutSine", loop: true });
+    utils.set(ringA, { rotateX: 72, rotateY: 0 });
+    utils.set(ringB, { rotateX: 72, rotateY: 60, rotateZ: 180 });
+    utils.set(ringC, { rotateX: 72, rotateY: -60 });
+    animate(ringA, { rotateZ: 360, duration: 3400, ease: "linear", loop: true });
+    animate(ringB, { rotateZ: -360, duration: 5200, ease: "linear", loop: true });
+    animate(ringC, { rotateZ: 360, duration: 4300, ease: "linear", loop: true });
+
+    // Pointer parallax — composes with the atom's own rotateY loop by
+    // writing the tilt to a wrapper CSS transform instead of the atom.
+    const scene = document.getElementById("atom-scene");
+    const tiltState = { rx: 0, ry: 0, tx: 0, ty: 0 };
+    scene.addEventListener("pointermove", (e) => {
+      const r = scene.getBoundingClientRect();
+      tiltState.tx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+      tiltState.ty = ((e.clientY - r.top) / r.height - 0.5) * 2;
+    });
+    scene.addEventListener("pointerleave", () => { tiltState.tx = 0; tiltState.ty = 0; });
+    (function tilt() {
+      tiltState.rx += (tiltState.ty * -14 - tiltState.rx) * 0.06;
+      tiltState.ry += (tiltState.tx * 10 - tiltState.ry) * 0.06;
+      utils.set(atom, {
+        rotateX: tiltState.rx,
+        rotate: tiltState.ry,
+      });
+      requestAnimationFrame(tilt);
+    })();
+  }
+
+  /* ── download button ── */
+  const dlSweep = dlBtn.querySelector(".sweep");
+  dlBtn.addEventListener("pointerenter", () => {
+    if (reduced) return;
+    animate(dlSweep, { translateX: [-120, 320], duration: 700, ease: "outCubic" });
+    animate(dlBtn.querySelector(".dl-icon"), {
+      translateY: [-2, 3, -2], duration: 700, ease: "inOutSine",
+    });
+  });
+  dlBtn.addEventListener("click", () => {
+    if (reduced) return;
+    animate(dlBtn, { scale: [1, 0.97, 1], duration: 350, ease: "outQuad" });
+  });
+</script>
+</body>
+</html>
