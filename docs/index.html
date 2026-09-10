@@ -19,6 +19,9 @@
   </script>
 </head>
 <body>
+  <canvas id="atom-canvas" aria-hidden="true"></canvas>
+  <div class="scroll-progress" aria-hidden="true"></div>
+
   <nav class="nav">
     <a class="nav-brand" href="#hero">AtomHax</a>
     <div class="nav-links">
@@ -30,15 +33,13 @@
   </nav>
 
   <section class="hero" id="hero">
-    <canvas id="atom-canvas"></canvas>
-    <div class="hero-glow" aria-hidden="true"></div>
     <div class="hero-copy">
       <p class="hero-eyebrow">Native Windows client &middot; v0.5.2</p>
       <h1 class="hero-title" data-hero-title>HaxBall, outside the tab.</h1>
       <p class="hero-sub" data-hero-sub>The same field. A client that moves with it.</p>
       <div class="hero-actions">
         <a class="hero-cta" href="#download" data-cta>Download for Windows</a>
-        <span class="hero-hint" id="atom-hint" data-hint>drag to rotate &mdash; hover to excite</span>
+        <span class="hero-hint" id="atom-hint">drag to rotate &mdash; scroll to travel</span>
       </div>
     </div>
     <div class="stats-band" data-stats>
@@ -52,9 +53,8 @@
     <div class="showcase-sticky">
       <div class="showcase-media">
         <video src="assets/gameplay.mp4" autoplay muted loop playsinline></video>
-        <div class="showcase-fallback" aria-hidden="true"></div>
-        <div class="showcase-vignette" aria-hidden="true"></div>
       </div>
+      <div class="showcase-vignette" aria-hidden="true"></div>
       <div class="showcase-content">
         <p class="section-eyebrow" data-eyebrow>Showcase</p>
         <h2 class="section-title" data-section-title>Next-level frame path.<br><em>Game on.</em></h2>

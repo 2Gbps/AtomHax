@@ -1,13 +1,15 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { animate, spring } from 'animejs';
+import { animate, createTimeline, spring, onScroll, stagger } from 'animejs';
 import 'animejs/adapters/three';
 
 const canvas = document.getElementById('atom-canvas');
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 try {
+  /* ═══════════════════════════════════════════════
+     RENDERER — transparent over the page field
+     ═══════════════════════════════════════════════ */
   const renderer = new THREE.WebGLRenderer({
     canvas,
     alpha: true,
@@ -18,17 +20,39 @@ try {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
+  renderer.toneMappingExposure = 1.12;
 
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 60);
-  camera.position.set(0, 0.6, 8.2);
-  camera.lookAt(0, 0, 0);
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 90);
+  camera.position.set(0, 0.55, 8.6);
 
-  /* ─── chrome material ─── */
+  scene.add(new THREE.AmbientLight(0x8fa8b8, 0.28));
+
+  const limeLight = new THREE.PointLight(0xc8ff4a, 15, 44, 2);
+  limeLight.position.set(5.2, 3.2, 4.6);
+  const cyanLight = new THREE.PointLight(0x55d6ff, 11, 44, 2);
+  cyanLight.position.set(-5.4, -2.6, 3.4);
+  const rimLight = new THREE.PointLight(0xffffff, 7, 36, 2);
+  rimLight.position.set(0, 4.6, -5.2);
+  scene.add(limeLight, cyanLight, rimLight);
+
+  /* ═══════════════════════════════════════════════
+     RIG — spinner (idle yaw) > scrollRig (scroll pose) > atom (trackball)
+     Each layer is owned by exactly one motion system.
+     ═══════════════════════════════════════════════ */
+  const spinner = new THREE.Group();
+  const scrollRig = new THREE.Group();
+  const atom = new THREE.Group();
+  scrollRig.add(atom);
+  spinner.add(scrollRig);
+  scene.add(spinner);
+
+  /* ═══════════════════════════════════════════════
+     CHROME MATERIALS
+     ═══════════════════════════════════════════════ */
   const chrome = new THREE.MeshPhysicalMaterial({
     color: 0xdfe5ea,
     metalness: 1,
@@ -37,48 +61,56 @@ try {
     clearcoatRoughness: 0.08,
     envMapIntensity: 1.5,
   });
+  const chromeDark = chrome.clone();
+  chromeDark.color = new THREE.Color(0xb7c1c9);
+  chromeDark.roughness = 0.16;
+  chromeDark.envMapIntensity = 1.25;
 
-  /* ─── atom group ─── */
-  const atom = new THREE.Group();
-  scene.add(atom);
-
-  /* nucleus cluster: core + 4 nucleons on tetrahedral offsets */
+  /* ═══════════════════════════════════════════════
+     NUCLEUS CLUSTER — core + nucleons packed on tetra offsets
+     ═══════════════════════════════════════════════ */
   const nucleus = new THREE.Group();
   atom.add(nucleus);
-  const coreGeo = new THREE.SphereGeometry(0.5, 48, 48);
-  const nucleonGeo = new THREE.SphereGeometry(0.27, 32, 32);
-  const core = new THREE.Mesh(coreGeo, chrome);
+
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.44, 48, 48), chrome);
   nucleus.add(core);
-  const tetra = [
-    [0.42, 0.34, 0.30],
-    [-0.42, 0.28, -0.26],
-    [0.18, -0.44, 0.32],
-    [-0.16, -0.30, 0.46],
+
+  const nucleonGeo = new THREE.SphereGeometry(0.23, 32, 32);
+  const nucleonOffsets = [
+    [0.36, 0.28, 0.15],
+    [-0.36, 0.24, -0.24],
+    [0.15, -0.4, -0.22],
+    [-0.13, -0.24, 0.38],
   ];
-  tetra.forEach((offset) => {
-    const nucleon = new THREE.Mesh(nucleonGeo, chrome);
+  nucleonOffsets.forEach((offset) => {
+    const nucleon = new THREE.Mesh(nucleonGeo, chromeDark);
     nucleon.position.set(...offset);
     nucleus.add(nucleon);
   });
 
-  /* ─── 3 orbit rings at 120°, standing like the classic atom symbol ─── */
+  /* ═══════════════════════════════════════════════
+     ORBIT RINGS — 3 at 120°, standing, per-ring tilt
+     ═══════════════════════════════════════════════ */
+  const ringSpecs = [
+    { radius: 1.5, tilt: 24, zOffset: -6, speed: 1.35, glow: '#c8ff4a' },
+    { radius: 1.86, tilt: 30, zOffset: 0, speed: -1.05, glow: '#8ee9ff' },
+    { radius: 2.24, tilt: 20, zOffset: 6, speed: 0.72, glow: '#ff735e' },
+  ];
   const electrons = [];
-  const ringRadii = [2.05, 2.5, 2.95];
-  const ringTilts = [24, 30, 20];
-  const orbitSpeeds = [1.35, -1.0, 0.7];
-  ringRadii.forEach((radius, i) => {
+
+  ringSpecs.forEach((spec, i) => {
     const container = new THREE.Group();
     container.rotation.y = (i * Math.PI * 2) / 3;
     atom.add(container);
 
     const ringGroup = new THREE.Group();
-    ringGroup.rotation.x = THREE.MathUtils.degToRad(ringTilts[i]);
-    ringGroup.rotation.z = THREE.MathUtils.degToRad(i * 6 - 6);
+    ringGroup.rotation.x = THREE.MathUtils.degToRad(spec.tilt);
+    ringGroup.rotation.z = THREE.MathUtils.degToRad(spec.zOffset);
     container.add(ringGroup);
 
     const torus = new THREE.Mesh(
-      new THREE.TorusGeometry(radius, 0.032, 24, 180),
-      chrome,
+      new THREE.TorusGeometry(spec.radius, 0.026, 24, 190),
+      i === 1 ? chromeDark : chrome,
     );
     ringGroup.add(torus);
 
@@ -86,11 +118,11 @@ try {
     ringGroup.add(pivot);
 
     const electron = new THREE.Mesh(
-      new THREE.SphereGeometry(0.16, 32, 32),
+      new THREE.SphereGeometry(0.125, 32, 32),
       new THREE.MeshPhysicalMaterial({
-        color: 0xeef2f5,
+        color: 0xe8edf1,
         metalness: 1,
-        roughness: 0.12,
+        roughness: 0.1,
         clearcoat: 1,
         envMapIntensity: 1.6,
         emissive: 0x000000,
@@ -99,165 +131,206 @@ try {
         opacity: 1,
       }),
     );
-    electron.position.x = radius;
+    electron.position.x = spec.radius;
+
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: makeGlowTexture(),
+      color: new THREE.Color(spec.glow),
+      transparent: true,
+      opacity: 0.38,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    }));
+    glow.scale.setScalar(0.6);
+    electron.add(glow);
+
     pivot.add(electron);
-    electrons.push({ pivot, electron, baseSpeed: orbitSpeeds[i], phase: i * 2.1 });
+    electrons.push({ pivot, electron, glow, spec });
   });
 
-  /* faint distant particles for depth */
-  const starGeo = new THREE.BufferGeometry();
-  const starCount = 260;
-  const starPos = new Float32Array(starCount * 3);
-  for (let i = 0; i < starCount; i++) {
-    const r = 12 + Math.random() * 16;
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(Math.random() * 2 - 1);
-    starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-    starPos[i * 3 + 1] = r * Math.cos(phi);
-    starPos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-  }
-  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-  const stars = new THREE.Points(
-    starGeo,
-    new THREE.PointsMaterial({ color: 0x9fb4c4, size: 0.05, transparent: true, opacity: 0.5, depthWrite: false }),
-  );
-  scene.add(stars);
+  /* ═══════════════════════════════════════════════
+     STARFIELD — two depth layers with parallax drift
+     ═══════════════════════════════════════════════ */
+  const starsA = makeStars(260, 15, 34, 0.045, 0x9fb4c4, 0.5);
+  const starsB = makeStars(150, 9, 18, 0.07, 0xd7e6ef, 0.65);
+  scene.add(starsA, starsB);
 
-  /* colored rim lights to tint the chrome */
-  const limeLight = new THREE.PointLight(0xc8ff4a, 18, 30, 2);
-  limeLight.position.set(5, 3, 4);
-  scene.add(limeLight);
-  const cyanLight = new THREE.PointLight(0x55d6ff, 14, 30, 2);
-  cyanLight.position.set(-5, -2.5, 3);
-  scene.add(cyanLight);
-
-  /* ─── drag to rotate (orbit target offset left so the atom sits right of frame) ─── */
-  const controls = new OrbitControls(camera, canvas);
-  controls.target.set(-1.5, 0.15, 0);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.06;
-  controls.enableZoom = false;
-  controls.enablePan = false;
-  controls.autoRotate = false;
-  controls.minPolarAngle = Math.PI * 0.22;
-  controls.maxPolarAngle = Math.PI * 0.78;
-
-  /* ─── anime.js adapter drives the atom ─── */
+  /* ═══════════════════════════════════════════════
+     ANIME.JS ADAPTER — the atom is driven by anime.js
+     ═══════════════════════════════════════════════ */
   animate(atom, {
     scale: [0, 1],
-    duration: 1400,
-    ease: spring({ stiffness: 70, damping: 11 }),
+    duration: 1500,
+    ease: spring({ stiffness: 68, damping: 11 }),
   });
 
   if (!reduced) {
-    animate(atom, {
-      rotateY: 360,
-      duration: 90000,
-      ease: 'linear',
-      loop: true,
-    });
-  }
-
-  if (!reduced) {
-    animate(core, {
-      scale: 1.06,
-      duration: 2600,
+    animate(spinner, { rotateY: 360, duration: 110000, ease: 'linear', loop: true });
+    animate(spinner.position, {
+      y: [0.15, -0.15],
+      duration: 5600,
       alternate: true,
       loop: true,
       ease: 'inOutSine',
     });
-    electrons.forEach((entry) => {
+    animate(core, {
+      scale: 1.07,
+      duration: 2700,
+      alternate: true,
+      loop: true,
+      ease: 'inOutSine',
+    });
+    electrons.forEach((entry, i) => {
       animate(entry.electron, {
         rotateZ: 360,
-        duration: 5200 + Math.random() * 1600,
+        duration: 4800 + i * 950,
         ease: 'linear',
         loop: true,
       });
+      animate(entry.glow.material, {
+        opacity: [0.24, 0.5],
+        duration: 2400 + i * 500,
+        alternate: true,
+        loop: true,
+        ease: 'inOutSine',
+      });
+    });
+    animate(limeLight, {
+      intensity: [9, 19],
+      duration: 4300,
+      alternate: true,
+      loop: true,
+      ease: 'inOutSine',
+    });
+    animate(cyanLight, {
+      intensity: [7, 15],
+      duration: 5400,
+      alternate: true,
+      loop: true,
+      ease: 'inOutSine',
+    });
+    animate(starsA.material, {
+      opacity: [0.3, 0.6],
+      duration: 3800,
+      alternate: true,
+      loop: true,
+      ease: 'inOutSine',
+    });
+    animate(starsB.material, {
+      opacity: [0.45, 0.8],
+      duration: 3000,
+      delay: 600,
+      alternate: true,
+      loop: true,
+      ease: 'inOutSine',
     });
   }
 
-  /* ─── hover: excite ─── */
-  const raycaster = new THREE.Raycaster();
-  const pointer = new THREE.Vector2(-2, -2);
-  const hitTargets = [core, ...electrons.map((e) => e.electron)];
-  const hoverState = { excited: false, speed: 1, targetSpeed: 1 };
+  /* ═══════════════════════════════════════════════
+     SCROLL CHOREOGRAPHY — atom travels side to side,
+     rotation and scale scrubbed to page scroll;
+     camera dollies in counterpoint.
+     ═══════════════════════════════════════════════ */
+  if (!reduced) {
+    createTimeline({
+      autoplay: onScroll({ target: document.body, sync: true }),
+      defaults: { ease: 'inOutCubic' },
+    })
+      .add(scrollRig, { x: 1.45, rotateY: 0, rotateX: 0, scale: 0.9, duration: 160 }, 0)
+      .add(camera, { z: 8.2, y: 0.9, duration: 160 }, 0)
+      .add(scrollRig, { x: -1.7, rotateY: -150, rotateX: 24, scale: 1.1, duration: 240 }, 160)
+      .add(camera, { z: 7.4, y: 1.05, duration: 240 }, 160)
+      .add(scrollRig, { x: 1.7, rotateY: -310, rotateX: -16, scale: 0.98, duration: 250 }, 410)
+      .add(camera, { z: 8.9, y: 0.45, duration: 240 }, 410)
+      .add(scrollRig, { x: 0, y: 0.12, rotateY: -360, rotateX: 0, scale: 1.2, duration: 270 }, 660)
+      .add(camera, { z: 6.9, y: 0.4, duration: 270 }, 660);
+  }
 
-    const excite = () => {
-    if (hoverState.excited) return;
-    hoverState.excited = true;
-    hoverState.targetSpeed = 3.4;
-    electrons.forEach((entry, i) => {
-      animate(entry.electron, {
-        scale: 1.5,
-        duration: 550,
-        ease: spring({ stiffness: 180, damping: 13 }),
-        delay: i * 40,
-      });
-      animate(entry.electron.material, {
-        emissive: '#c8ff4a',
-        emissiveIntensity: 1.6,
-        duration: 300,
-        ease: 'outCubic',
-      });
-    });
+  /* ═══════════════════════════════════════════════
+     TRACKBALL DRAG — free self-rotation following the
+     gesture; horizontal spin around world-up, vertical
+     spin around camera-right; anime.js spring carries
+     release inertia to rest.
+     ═══════════════════════════════════════════════ */
+  const drag = { active: false, lastX: 0, lastY: 0 };
+  const inertia = { x: 0, y: 0 };
+  const WORLD_UP = new THREE.Vector3(0, 1, 0);
+  const cameraRight = new THREE.Vector3();
+  const rotationQuaternion = new THREE.Quaternion();
+
+  const applySpin = (dx, dy) => {
+    cameraRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    atom.quaternion.premultiply(rotationQuaternion.setFromAxisAngle(WORLD_UP, dx * 0.0052));
+    atom.quaternion.premultiply(rotationQuaternion.setFromAxisAngle(cameraRight, dy * 0.0052));
   };
 
-  const calm = () => {
-    if (!hoverState.excited) return;
-    hoverState.excited = false;
-    hoverState.targetSpeed = 1;
-    electrons.forEach((entry) => {
-      animate(entry.electron, { scale: 1, duration: 700, ease: 'outCubic' });
-      animate(entry.electron.material, {
-        emissive: '#000000',
-        emissiveIntensity: 0.6,
-        duration: 700,
-        ease: 'outCubic',
-      });
-    });
-  };
+  canvas.addEventListener('pointerdown', (event) => {
+    drag.active = true;
+    drag.lastX = event.clientX;
+    drag.lastY = event.clientY;
+    inertia.x = 0;
+    inertia.y = 0;
+    canvas.setPointerCapture(event.pointerId);
+  });
 
   canvas.addEventListener('pointermove', (event) => {
-    const rect = canvas.getBoundingClientRect();
-    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-  });
-  canvas.addEventListener('pointerleave', () => {
-    pointer.set(-2, -2);
-    calm();
+    if (!drag.active) return;
+    const dx = event.clientX - drag.lastX;
+    const dy = event.clientY - drag.lastY;
+    drag.lastX = event.clientX;
+    drag.lastY = event.clientY;
+    inertia.x = dx;
+    inertia.y = dy;
+    applySpin(dx, dy);
   });
 
-  /* ─── frame loop ─── */
+  const releaseDrag = () => {
+    if (!drag.active) return;
+    drag.active = false;
+    animate(inertia, {
+      x: 0,
+      y: 0,
+      duration: 1700,
+      ease: spring({ stiffness: 52, damping: 21 }),
+    });
+  };
+
+  canvas.addEventListener('pointerup', releaseDrag);
+  canvas.addEventListener('pointercancel', releaseDrag);
+
+  /* ═══════════════════════════════════════════════
+     FRAME LOOP — orbit pivots, star drift, inertia decay
+     ═══════════════════════════════════════════════ */
   const clock = new THREE.Clock();
+
   const tick = () => {
     const dt = Math.min(clock.getDelta(), 0.05);
-    controls.update();
 
-    hoverState.speed += (hoverState.targetSpeed - hoverState.speed) * 0.06;
-    electrons.forEach((entry, i) => {
-      entry.pivot.rotation.z += entry.baseSpeed * hoverState.speed * dt;
+    if (!drag.active && (Math.abs(inertia.x) > 0.01 || Math.abs(inertia.y) > 0.01)) {
+      applySpin(inertia.x * 0.55, inertia.y * 0.55);
+    }
+
+    electrons.forEach((entry) => {
+      entry.pivot.rotation.z += entry.spec.speed * dt;
     });
 
-    nucleus.rotation.y += 0.12 * dt;
-    stars.rotation.y += 0.004 * dt;
-
-    /* hover raycast */
-    raycaster.setFromCamera(pointer, camera);
-    const hits = raycaster.intersectObjects(hitTargets, false);
-    if (hits.length > 0) excite();
-    else if (hoverState.excited && pointer.x > -2) calm();
+    starsA.rotation.y += 0.0045 * dt;
+    starsB.rotation.y -= 0.003 * dt;
 
     renderer.render(scene, camera);
     requestAnimationFrame(tick);
   };
   tick();
 
+  /* ═══════════════════════════════════════════════
+     RESIZE
+     ═══════════════════════════════════════════════ */
   const resize = () => {
-    const width = canvas.clientWidth || window.innerWidth;
-    const height = canvas.clientHeight || window.innerHeight;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
-    camera.fov = width < 700 ? 46 : 38;
+    camera.fov = width < 700 ? 47 : 38;
     camera.updateProjectionMatrix();
   };
   resize();
@@ -266,5 +339,44 @@ try {
   window.__atomReady = true;
 } catch (error) {
   document.body.classList.add('atom-failed');
-  console.error('AtomHax 3D atom failed to start:', error);
+  console.error('AtomHax 3D field failed to start:', error);
+}
+
+/* ═══════════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════════ */
+function makeGlowTexture() {
+  const size = 128;
+  const glowCanvas = document.createElement('canvas');
+  glowCanvas.width = size;
+  glowCanvas.height = size;
+  const context = glowCanvas.getContext('2d');
+  const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, 'rgba(255,255,255,0.9)');
+  gradient.addColorStop(0.25, 'rgba(255,255,255,0.32)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, size, size);
+  return new THREE.CanvasTexture(glowCanvas);
+}
+
+function makeStars(count, minRadius, maxRadius, size, color, opacity) {
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const radius = minRadius + Math.random() * (maxRadius - minRadius);
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(Math.random() * 2 - 1);
+    positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = radius * Math.cos(phi);
+    positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+  }
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  return new THREE.Points(geometry, new THREE.PointsMaterial({
+    color,
+    size,
+    transparent: true,
+    opacity,
+    depthWrite: false,
+  }));
 }
