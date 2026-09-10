@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -8,104 +8,133 @@
   <title>AtomHax | HaxBall outside the tab</title>
   <link rel="icon" type="image/png" href="assets/Logo.png">
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" defer></script>
 </head>
 <body>
   <nav class="nav">
-    <a href="#top" class="nav-logo">
-      <img src="assets/Logo.png" alt="AtomHax" width="32" height="32">
+    <a class="nav-logo" href="#top">
+      <img src="assets/Logo.png" alt="AtomHax" width="30" height="30">
       <span>AtomHax</span>
     </a>
     <div class="nav-links">
       <a href="#features">Features</a>
       <a href="#scripts">Scripts</a>
+      <a href="#gameplay">Gameplay</a>
       <a href="#download">Download</a>
       <a href="scripting.html">API</a>
     </div>
   </nav>
 
   <section class="hero" id="top">
-    <div class="hero-content">
-      <h1 class="hero-title">
-        <span class="hero-line" data-reveal>HaxBall</span>
-        <span class="hero-line hero-accent" data-reveal>outside the tab.</span>
-      </h1>
-      <p class="hero-sub" data-reveal>The same field. A client that moves with it.</p>
-      <a href="#download" class="hero-cta" data-reveal>
-        <span>Download</span>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v8m0 0l-3-3m3 3l3-3M3 13h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </a>
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <h1 class="hero-title" data-hero-title>
+          <span class="hero-line">HaxBall</span>
+          <span class="hero-line hero-accent">outside the tab.</span>
+        </h1>
+        <p class="hero-sub" data-hero-sub>The same field. A client that moves with it.</p>
+        <a class="hero-cta" href="#download" data-hero-cta>Download for Windows</a>
+        <span class="hero-meta" data-hero-meta>v0.5.2 &middot; x64 &middot; portable</span>
+      </div>
+      <div class="hero-atom" data-hero-atom>
+        <div class="atom-card atom-card-hero">
+          <div class="atom-face atom-face-front"><img src="assets/Logo.png" alt="AtomHax icon"></div>
+          <div class="atom-face atom-face-back"><img src="assets/Logo.png" alt=""></div>
+          <div class="atom-edge atom-edge-top"></div>
+          <div class="atom-edge atom-edge-bottom"></div>
+          <div class="atom-edge atom-edge-left"></div>
+          <div class="atom-edge atom-edge-right"></div>
+        </div>
+        <div class="atom-glow"></div>
+      </div>
     </div>
-    <div class="hero-scroll" data-reveal>
-      <span>Scroll</span>
-      <div class="hero-scroll-line"></div>
+    <div class="hero-scroll"><span>Scroll</span><div class="hero-scroll-line"></div></div>
+  </section>
+
+  <section class="atom-pin" id="atom">
+    <div class="atom-pin-inner">
+      <div class="atom-stage">
+        <div class="atom-card atom-card-big" data-atom-3d>
+          <div class="atom-face atom-face-front"><img src="assets/Logo.png" alt=""></div>
+          <div class="atom-face atom-face-back"><img src="assets/Logo.png" alt=""></div>
+          <div class="atom-edge atom-edge-top"></div>
+          <div class="atom-edge atom-edge-bottom"></div>
+          <div class="atom-edge atom-edge-left"></div>
+          <div class="atom-edge atom-edge-right"></div>
+        </div>
+        <div class="atom-ring atom-ring-a"></div>
+        <div class="atom-ring atom-ring-b"></div>
+        <div class="atom-ring atom-ring-c"></div>
+      </div>
+      <div class="atom-caption-track">
+        <p class="atom-caption is-active" data-caption="0">One icon. One client. <strong>The field is the same &mdash; the frame is not.</strong></p>
+        <p class="atom-caption" data-caption="1">Electrons orbit. Frames arrive. <strong>Your display decides what is useful.</strong></p>
+        <p class="atom-caption" data-caption="2">Spin it all you want. <strong>The game never leaves your machine.</strong></p>
+      </div>
+      <div class="atom-progress"><span data-atom-progress>000</span><em>/ 360&deg;</em></div>
     </div>
   </section>
 
   <section class="feature" id="features">
-    <div class="feature-inner">
+    <div class="feature-inner" data-reveal-group>
       <span class="feature-num" data-reveal>01</span>
-      <h2 class="feature-title" data-reveal>Let the next frame<br>arrive clean.</h2>
+      <h2 class="feature-title" data-reveal>Let the next frame<br><em>arrive clean.</em></h2>
       <p class="feature-desc" data-reveal>AtomHax lifts the browser's old ceiling and lets the display decide what is useful. No stadium redraw. No fake 900 FPS promise.</p>
       <div class="feature-stats" data-reveal>
-        <div class="stat">
-          <span class="stat-label">Browser cap</span>
-          <span class="stat-value">60<span class="stat-unit">hz</span></span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Display path</span>
-          <span class="stat-value">144<span class="stat-unit">hz</span></span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Present</span>
-          <span class="stat-value">New<span class="stat-unit">frame</span></span>
-        </div>
+        <div class="stat"><span class="stat-label">Browser cap</span><span class="stat-value">60<small>hz</small></span></div>
+        <div class="stat"><span class="stat-label">Display path</span><span class="stat-value">144<small>hz</small></span></div>
+        <div class="stat"><span class="stat-label">Present</span><span class="stat-value">new<small>frame</small></span></div>
       </div>
     </div>
   </section>
 
   <section class="feature feature-alt" id="scripts">
-    <div class="feature-inner">
+    <div class="feature-inner" data-reveal-group>
       <span class="feature-num" data-reveal>02</span>
-      <h2 class="feature-title" data-reveal>Give the game<br>an open surface.</h2>
+      <h2 class="feature-title" data-reveal>Give the game<br><em>an open surface.</em></h2>
       <p class="feature-desc" data-reveal>Load a plain JavaScript file, point it at the right realm, and read the match through a bridge small enough to understand.</p>
       <div class="feature-code" data-reveal>
         <code>const state = window.parent.g?.snap();</code>
         <code>if (state?.ok) draw(state.ball);</code>
       </div>
-      <a href="scripting.html" class="feature-link" data-reveal>Read the full API &rarr;</a>
+      <a class="feature-link" href="scripting.html" data-reveal>Read the full API &rarr;</a>
     </div>
   </section>
 
   <section class="feature" id="shell">
-    <div class="feature-inner">
+    <div class="feature-inner" data-reveal-group>
       <span class="feature-num" data-reveal>03</span>
-      <h2 class="feature-title" data-reveal>Build the room<br>around the match.</h2>
+      <h2 class="feature-title" data-reveal>Build the room<br><em>around the match.</em></h2>
       <p class="feature-desc" data-reveal>Favorites, room search, shortcuts, scripts, and chat tools belong around the field. Collapse the shell when the match starts.</p>
       <div class="feature-list" data-reveal>
-        <div class="feature-list-item">
-          <span class="feature-list-num">01</span>
-          <span class="feature-list-text">Current room &mdash; the field stays central</span>
-        </div>
-        <div class="feature-list-item">
-          <span class="feature-list-num">02</span>
-          <span class="feature-list-text">Scripts &mdash; enable, reload, play</span>
-        </div>
-        <div class="feature-list-item">
-          <span class="feature-list-num">03</span>
-          <span class="feature-list-text">Preferences &mdash; saved in your app data</span>
-        </div>
+        <div class="feature-list-item"><span class="feature-list-num">01</span><span>Current room &mdash; the field stays central</span></div>
+        <div class="feature-list-item"><span class="feature-list-num">02</span><span>Scripts &mdash; enable, reload, play</span></div>
+        <div class="feature-list-item"><span class="feature-list-num">03</span><span>Preferences &mdash; saved in your app data</span></div>
       </div>
     </div>
   </section>
 
-  <section class="download" id="download">
-    <div class="download-inner">
+  <section class="gameplay" id="gameplay">
+    <div class="gameplay-media">
+      <video src="assets/gameplay.mp4" autoplay muted loop playsinline></video>
+      <div class="gameplay-fallback"></div>
+      <div class="gameplay-vignette"></div>
+    </div>
+    <div class="gameplay-content">
       <span class="feature-num" data-reveal>04</span>
-      <h2 class="download-title" data-reveal>Play outside<br>the tab.</h2>
+      <h2 class="gameplay-title" data-reveal>The field<br><em>stays yours.</em></h2>
+      <p class="gameplay-desc" data-reveal>Same stadium. Same physics. Same friends. The client around it is what changed.</p>
+    </div>
+  </section>
+
+  <section class="download" id="download">
+    <div class="download-inner" data-reveal-group>
+      <span class="feature-num" data-reveal>05</span>
+      <h2 class="download-title" data-reveal>Play outside<br><em>the tab.</em></h2>
       <p class="download-desc" data-reveal>One Windows x64 executable. No installer. The game view stays familiar; everything around it gets out of the way.</p>
       <a class="download-btn" href="https://github.com/2Gbps/AtomHax/releases/latest/download/AtomHax-0.5.2-x64.exe" download data-reveal>
-        <span>Download AtomHax</span>
-        <span class="download-version">v0.5.2</span>
+        <span>Download AtomHax</span><b>v0.5.2</b>
       </a>
       <p class="download-note" data-reveal>GPL-3.0 &middot; Not affiliated with HaxBall &middot; <a href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">Source</a></p>
     </div>
