@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { animate, createTimeline, spring, onScroll, stagger } from 'animejs';
+import { animate, createTimeline, createScope, onScroll, spring } from 'animejs';
 import 'animejs/adapters/three';
 
 const canvas = document.getElementById('atom-canvas');
@@ -8,7 +8,7 @@ const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 try {
   /* ═══════════════════════════════════════════════
-     RENDERER — transparent over the page field
+     RENDERER
      ═══════════════════════════════════════════════ */
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -26,22 +26,124 @@ try {
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 90);
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 120);
   camera.position.set(0, 0.55, 8.6);
 
   scene.add(new THREE.AmbientLight(0x8fa8b8, 0.28));
 
-  const limeLight = new THREE.PointLight(0xc8ff4a, 15, 44, 2);
-  limeLight.position.set(5.2, 3.2, 4.6);
-  const cyanLight = new THREE.PointLight(0x55d6ff, 11, 44, 2);
-  cyanLight.position.set(-5.4, -2.6, 3.4);
+  const keyLight = new THREE.PointLight(0xffffff, 15, 44, 2);
+  keyLight.position.set(5.2, 3.2, 4.6);
+  const fillLight = new THREE.PointLight(0xcfdce6, 11, 44, 2);
+  fillLight.position.set(-5.4, -2.6, 3.4);
   const rimLight = new THREE.PointLight(0xffffff, 7, 36, 2);
   rimLight.position.set(0, 4.6, -5.2);
-  scene.add(limeLight, cyanLight, rimLight);
+  scene.add(keyLight, fillLight, rimLight);
 
   /* ═══════════════════════════════════════════════
-     RIG — spinner (idle yaw) > scrollRig (scroll pose) > atom (trackball)
-     Each layer is owned by exactly one motion system.
+     AURORA FIELD — flat fullscreen shader plane,
+     a silver luminance band domain-warped like a
+     boreal aurora. Monochrome by design: the field
+     reads as chrome light moving over dark glass.
+     ═══════════════════════════════════════════════ */
+  const auroraUniforms = {
+    uTime: { value: 0 },
+    uScroll: { value: 0 },
+    uIntensity: { value: reduced ? 0 : 0.16 },
+  };
+
+  const auroraMaterial = new THREE.ShaderMaterial({
+    uniforms: auroraUniforms,
+    transparent: true,
+    depthWrite: false,
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      precision highp float;
+      varying vec2 vUv;
+      uniform float uTime;
+      uniform float uScroll;
+      uniform float uIntensity;
+
+      float hash(vec2 p) {
+        p = fract(p * vec2(234.34, 435.345));
+        p += dot(p, p + 34.23);
+        return fract(p.x * p.y);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        vec2 s = f * f * (3.0 - 2.0 * f);
+        float a = hash(i);
+        float b = hash(i + vec2(1.0, 0.0));
+        float c = hash(i + vec2(0.0, 1.0));
+        float d = hash(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, s.x), mix(c, d, s.x), s.y);
+      }
+
+      float fbm(vec2 p) {
+        float value = 0.0;
+        float amplitude = 0.5;
+        mat2 rotation = mat2(0.8, 0.6, -0.6, 0.8);
+        for (int octave = 0; octave < 4; octave++) {
+          value += amplitude * noise(p);
+          p = rotation * p * 2.02;
+          amplitude *= 0.55;
+        }
+        return value;
+      }
+
+      vec3 energyColor(float wave) {
+        float segment = fract(wave) * 6.0;
+        float first  = mix(0.22, 0.34, smoothstep(0.0, 1.0, segment));
+        float second = mix(first, 0.48, smoothstep(1.0, 2.0, segment));
+        float third  = mix(second, 0.62, smoothstep(2.0, 3.0, segment));
+        float fourth = mix(third, 0.78, smoothstep(3.0, 4.0, segment));
+        float fifth  = mix(fourth, 0.92, smoothstep(4.0, 5.0, segment));
+        float sixth  = mix(fifth, 1.0, smoothstep(5.0, 6.0, segment));
+        return vec3(sixth);
+      }
+
+      void main() {
+        float t = uTime * 0.045;
+        vec2 field = vUv;
+        field.y += uScroll * 0.7;
+
+        vec2 warp = vec2(
+          fbm(field * vec2(1.15, 1.7) + vec2(t, -t * 0.55)),
+          fbm(field * vec2(1.9, 0.85) - vec2(t * 0.4, t * 0.8))
+        );
+
+        float bands = fbm(field * vec2(2.7, 1.05) + warp * 1.6 + vec2(t * 0.55, -t * 0.2));
+        float curtain = smoothstep(0.28, 0.8, bands);
+        curtain = pow(curtain, 1.35);
+
+        float band = smoothstep(0.02, 0.42, vUv.y) * (1.0 - smoothstep(0.6, 0.98, vUv.y));
+        band = 0.55 + 0.45 * band;
+
+        float drift = fbm(field * vec2(0.75, 0.5) + vec2(-t * 0.33, t * 0.21));
+        vec3 color = energyColor(drift + t * 0.05);
+
+        float energy = curtain * band * uIntensity;
+        gl_FragColor = vec4(color * energy * 1.6, energy);
+      }
+    `,
+  });
+
+  const aurora = new THREE.Mesh(new THREE.PlaneGeometry(110, 40), auroraMaterial);
+  aurora.position.z = -30;
+  aurora.renderOrder = -1;
+  aurora.frustumCulled = false;
+  scene.add(aurora);
+
+  /* ═══════════════════════════════════════════════
+     RIG — spinner (idle yaw) > scrollRig (scroll pose)
+     > atom (trackball). One system per layer.
      ═══════════════════════════════════════════════ */
   const spinner = new THREE.Group();
   const scrollRig = new THREE.Group();
@@ -62,25 +164,25 @@ try {
     envMapIntensity: 1.5,
   });
   const chromeDark = chrome.clone();
-  chromeDark.color = new THREE.Color(0xb7c1c9);
+  chromeDark.color = new THREE.Color(0xb9c2c9);
   chromeDark.roughness = 0.16;
-  chromeDark.envMapIntensity = 1.25;
+  chromeDark.envMapIntensity = 1.35;
 
   /* ═══════════════════════════════════════════════
-     NUCLEUS CLUSTER — core + nucleons packed on tetra offsets
+     NUCLEUS CLUSTER + GLOW
      ═══════════════════════════════════════════════ */
   const nucleus = new THREE.Group();
   atom.add(nucleus);
 
-  const core = new THREE.Mesh(new THREE.SphereGeometry(0.44, 48, 48), chrome);
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.42, 48, 48), chrome);
   nucleus.add(core);
 
-  const nucleonGeo = new THREE.SphereGeometry(0.23, 32, 32);
+  const nucleonGeo = new THREE.SphereGeometry(0.21, 32, 32);
   const nucleonOffsets = [
-    [0.36, 0.28, 0.15],
-    [-0.36, 0.24, -0.24],
-    [0.15, -0.4, -0.22],
-    [-0.13, -0.24, 0.38],
+    [0.33, 0.26, 0.14],
+    [-0.33, 0.22, -0.22],
+    [0.14, -0.36, -0.2],
+    [-0.12, -0.22, 0.34],
   ];
   nucleonOffsets.forEach((offset) => {
     const nucleon = new THREE.Mesh(nucleonGeo, chromeDark);
@@ -88,14 +190,27 @@ try {
     nucleus.add(nucleon);
   });
 
+  const nucleusGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: makeGlowTexture(),
+    color: new THREE.Color(0xdfe8ee),
+    transparent: true,
+    opacity: 0.09,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  }));
+  nucleusGlow.scale.setScalar(1.5);
+  nucleus.add(nucleusGlow);
+
   /* ═══════════════════════════════════════════════
-     ORBIT RINGS — 3 at 120°, standing, per-ring tilt
+     ORBIT RINGS — standing, 120° apart, with resonance
+     halos, orbiting electrons and fading trails
      ═══════════════════════════════════════════════ */
   const ringSpecs = [
-    { radius: 1.5, tilt: 24, zOffset: -6, speed: 1.35, glow: '#c8ff4a' },
-    { radius: 1.86, tilt: 30, zOffset: 0, speed: -1.05, glow: '#8ee9ff' },
-    { radius: 2.24, tilt: 20, zOffset: 6, speed: 0.72, glow: '#ff735e' },
+    { radius: 1.4, tilt: 24, zOffset: -6, speed: 1.35, glow: '#ffffff' },
+    { radius: 1.74, tilt: 30, zOffset: 0, speed: -1.05, glow: '#c9d4dc' },
+    { radius: 2.1, tilt: 20, zOffset: 6, speed: 0.72, glow: '#eef2f5' },
   ];
+
   const electrons = [];
 
   ringSpecs.forEach((spec, i) => {
@@ -109,10 +224,22 @@ try {
     container.add(ringGroup);
 
     const torus = new THREE.Mesh(
-      new THREE.TorusGeometry(spec.radius, 0.026, 24, 190),
+      new THREE.TorusGeometry(spec.radius, 0.024, 24, 190),
       i === 1 ? chromeDark : chrome,
     );
     ringGroup.add(torus);
+
+    const resonance = new THREE.Mesh(
+      new THREE.TorusGeometry(spec.radius * 1.14, 0.007, 8, 190),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(spec.glow),
+        transparent: true,
+        opacity: 0.09,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    ringGroup.add(resonance);
 
     const pivot = new THREE.Group();
     ringGroup.add(pivot);
@@ -122,7 +249,7 @@ try {
       new THREE.MeshPhysicalMaterial({
         color: 0xe8edf1,
         metalness: 1,
-        roughness: 0.1,
+        roughness: 0.12,
         clearcoat: 1,
         envMapIntensity: 1.6,
         emissive: 0x000000,
@@ -137,26 +264,40 @@ try {
       map: makeGlowTexture(),
       color: new THREE.Color(spec.glow),
       transparent: true,
-      opacity: 0.38,
+      opacity: 0.36,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     }));
-    glow.scale.setScalar(0.6);
+    glow.scale.setScalar(0.55);
     electron.add(glow);
 
     pivot.add(electron);
-    electrons.push({ pivot, electron, glow, spec });
+
+    const trailGeo = new THREE.SphereGeometry(0.072, 20, 20);
+    [-0.5, -0.95].forEach((offset, j) => {
+      const trail = new THREE.Mesh(
+        trailGeo,
+        new THREE.MeshBasicMaterial({
+          color: new THREE.Color(spec.glow),
+          transparent: true,
+          opacity: 0.34 - j * 0.13,
+          depthWrite: false,
+        }),
+      );
+      const trailAngle = offset * Math.sign(spec.speed);
+      trail.position.set(
+        Math.cos(trailAngle) * spec.radius,
+        Math.sin(trailAngle) * spec.radius,
+        0,
+      );
+      pivot.add(trail);
+    });
+
+    electrons.push({ pivot, electron, glow, resonance, spec, index: i });
   });
 
   /* ═══════════════════════════════════════════════
-     STARFIELD — two depth layers with parallax drift
-     ═══════════════════════════════════════════════ */
-  const starsA = makeStars(260, 15, 34, 0.045, 0x9fb4c4, 0.5);
-  const starsB = makeStars(150, 9, 18, 0.07, 0xd7e6ef, 0.65);
-  scene.add(starsA, starsB);
-
-  /* ═══════════════════════════════════════════════
-     ANIME.JS ADAPTER — the atom is driven by anime.js
+     ANIME.JS ADAPTER — idle life of the atom
      ═══════════════════════════════════════════════ */
   animate(atom, {
     scale: [0, 1],
@@ -167,7 +308,7 @@ try {
   if (!reduced) {
     animate(spinner, { rotateY: 360, duration: 110000, ease: 'linear', loop: true });
     animate(spinner.position, {
-      y: [0.15, -0.15],
+      y: [0.14, -0.14],
       duration: 5600,
       alternate: true,
       loop: true,
@@ -180,46 +321,52 @@ try {
       loop: true,
       ease: 'inOutSine',
     });
-    electrons.forEach((entry, i) => {
+    animate(nucleusGlow.material, {
+      opacity: [0.05, 0.15],
+      duration: 3200,
+      alternate: true,
+      loop: true,
+      ease: 'inOutSine',
+    });
+    electrons.forEach((entry) => {
       animate(entry.electron, {
         rotateZ: 360,
-        duration: 4800 + i * 950,
+        duration: 4600 + entry.index * 950,
         ease: 'linear',
         loop: true,
       });
       animate(entry.glow.material, {
-        opacity: [0.24, 0.5],
-        duration: 2400 + i * 500,
+        opacity: [0.22, 0.48],
+        duration: 2400 + entry.index * 500,
+        alternate: true,
+        loop: true,
+        ease: 'inOutSine',
+      });
+      animate(entry.electron.material, {
+        emissiveIntensity: [0.4, 0.9],
+        duration: 3000 + entry.index * 400,
+        alternate: true,
+        loop: true,
+        ease: 'inOutSine',
+      });
+      animate(entry.pivot.children[1], {
+        opacity: [0.05, 0.14],
+        duration: 3900 + entry.index * 600,
         alternate: true,
         loop: true,
         ease: 'inOutSine',
       });
     });
-    animate(limeLight, {
+    animate(keyLight, {
       intensity: [9, 19],
       duration: 4300,
       alternate: true,
       loop: true,
       ease: 'inOutSine',
     });
-    animate(cyanLight, {
+    animate(fillLight, {
       intensity: [7, 15],
       duration: 5400,
-      alternate: true,
-      loop: true,
-      ease: 'inOutSine',
-    });
-    animate(starsA.material, {
-      opacity: [0.3, 0.6],
-      duration: 3800,
-      alternate: true,
-      loop: true,
-      ease: 'inOutSine',
-    });
-    animate(starsB.material, {
-      opacity: [0.45, 0.8],
-      duration: 3000,
-      delay: 600,
       alternate: true,
       loop: true,
       ease: 'inOutSine',
@@ -227,24 +374,49 @@ try {
   }
 
   /* ═══════════════════════════════════════════════
-     SCROLL CHOREOGRAPHY — atom travels side to side,
-     rotation and scale scrubbed to page scroll;
-     camera dollies in counterpoint.
+     AURORA SCROLL ENERGY — page scroll feeds the
+     field; observer created once, independent of the
+     pose timeline.
      ═══════════════════════════════════════════════ */
-  if (!reduced) {
-    createTimeline({
+  onScroll({
+    target: document.body,
+    sync: true,
+    onUpdate: (self) => {
+      auroraUniforms.uScroll.value = self.progress;
+    },
+  });
+
+  /* ═══════════════════════════════════════════════
+     SCROLL CHOREOGRAPHY — atom sweeps left to right
+     across the page; copy sits on the uncovered side.
+     Responsive keyframes via anime.js Scope.
+     ═══════════════════════════════════════════════ */
+  let poseTimeline = null;
+
+  const scope = createScope({
+    root: document.body,
+    mediaQueries: { mobile: '(max-width: 700px)' },
+  });
+
+  scope.add(({ matches }) => {
+    const mobile = matches.mobile;
+    if (poseTimeline) poseTimeline.revert();
+
+    const drift = mobile ? 0.3 : 1;
+
+    poseTimeline = createTimeline({
       autoplay: onScroll({ target: document.body, sync: true }),
       defaults: { ease: 'inOutCubic' },
     })
-      .add(scrollRig, { x: 1.45, rotateY: 0, rotateX: 0, scale: 0.9, duration: 160 }, 0)
+      .add(scrollRig, { x: -1.75 * drift, y: 0.28, rotateY: -12, rotateX: 0, scale: mobile ? 0.62 : 0.82, duration: 160 }, 0)
       .add(camera, { z: 8.2, y: 0.9, duration: 160 }, 0)
-      .add(scrollRig, { x: -1.7, rotateY: -150, rotateX: 24, scale: 1.1, duration: 240 }, 160)
-      .add(camera, { z: 7.4, y: 1.05, duration: 240 }, 160)
-      .add(scrollRig, { x: 1.7, rotateY: -310, rotateX: -16, scale: 0.98, duration: 250 }, 410)
-      .add(camera, { z: 8.9, y: 0.45, duration: 240 }, 410)
-      .add(scrollRig, { x: 0, y: 0.12, rotateY: -360, rotateX: 0, scale: 1.2, duration: 270 }, 660)
-      .add(camera, { z: 6.9, y: 0.4, duration: 270 }, 660);
-  }
+      .add(scrollRig, { x: -0.45 * drift, rotateY: -150, rotateX: 24, scale: mobile ? 0.8 : 1.16, duration: 250 }, 160)
+      .add(camera, { z: 7.4, y: 1.05, duration: 250 }, 160)
+      .add(scrollRig, { x: 1.75 * drift, rotateY: -310, rotateX: -16, scale: mobile ? 0.72 : 1.0, duration: 250 }, 410)
+      .add(camera, { z: 8.9, y: 0.45, duration: 250 }, 410)
+      .add(scrollRig, { x: 2.6 * drift, y: 0.1, rotateY: -360, rotateX: 0, scale: mobile ? 0.6 : 0.85, duration: 270 }, 660)
+      .add(camera, { z: 7.6, y: 0.5, duration: 270 }, 660);
+  });
 
   /* ═══════════════════════════════════════════════
      TRACKBALL DRAG — free self-rotation following the
@@ -299,12 +471,14 @@ try {
   canvas.addEventListener('pointercancel', releaseDrag);
 
   /* ═══════════════════════════════════════════════
-     FRAME LOOP — orbit pivots, star drift, inertia decay
+     FRAME LOOP — inertia decay, orbit pivots, aurora clock
      ═══════════════════════════════════════════════ */
   const clock = new THREE.Clock();
 
   const tick = () => {
     const dt = Math.min(clock.getDelta(), 0.05);
+
+    auroraUniforms.uTime.value = clock.getElapsedTime();
 
     if (!drag.active && (Math.abs(inertia.x) > 0.01 || Math.abs(inertia.y) > 0.01)) {
       applySpin(inertia.x * 0.55, inertia.y * 0.55);
@@ -313,9 +487,6 @@ try {
     electrons.forEach((entry) => {
       entry.pivot.rotation.z += entry.spec.speed * dt;
     });
-
-    starsA.rotation.y += 0.0045 * dt;
-    starsB.rotation.y -= 0.003 * dt;
 
     renderer.render(scene, camera);
     requestAnimationFrame(tick);
@@ -358,25 +529,4 @@ function makeGlowTexture() {
   context.fillStyle = gradient;
   context.fillRect(0, 0, size, size);
   return new THREE.CanvasTexture(glowCanvas);
-}
-
-function makeStars(count, minRadius, maxRadius, size, color, opacity) {
-  const geometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const radius = minRadius + Math.random() * (maxRadius - minRadius);
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(Math.random() * 2 - 1);
-    positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-    positions[i * 3 + 1] = radius * Math.cos(phi);
-    positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
-  }
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  return new THREE.Points(geometry, new THREE.PointsMaterial({
-    color,
-    size,
-    transparent: true,
-    opacity,
-    depthWrite: false,
-  }));
 }

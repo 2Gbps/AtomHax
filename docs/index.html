@@ -6,6 +6,9 @@
   <meta name="theme-color" content="#060a12">
   <meta name="description" content="AtomHax is a native Windows HaxBall client with a cleaner frame path, local scripts, and a room UI built around the match.">
   <title>AtomHax | HaxBall outside the tab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script type="importmap">
   {
@@ -24,17 +27,18 @@
 
   <nav class="nav">
     <a class="nav-brand" href="#hero">AtomHax</a>
-    <div class="nav-links">
-      <a href="#showcase">Showcase</a>
-      <a href="#features">Features</a>
-      <a href="#download">Download</a>
-      <a href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">GitHub</a>
+    <div class="dock">
+      <a class="dock-item" href="#showcase">Showcase</a>
+      <a class="dock-item" href="#features">Features</a>
+      <a class="dock-item" href="scripting.html">Scripts</a>
+      <a class="dock-item" href="#download">Download</a>
+      <a class="dock-item" href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">GitHub</a>
     </div>
   </nav>
 
   <section class="hero" id="hero">
     <div class="hero-copy">
-      <p class="hero-eyebrow">Native Windows client &middot; v0.5.2</p>
+      <p class="section-eyebrow hero-eyebrow" data-eyebrow><span class="eyebrow-tick"></span>Native Windows client &middot; v0.5.2</p>
       <h1 class="hero-title" data-hero-title>HaxBall, outside the tab.</h1>
       <p class="hero-sub" data-hero-sub>The same field. A client that moves with it.</p>
       <div class="hero-actions">
@@ -56,7 +60,7 @@
       </div>
       <div class="showcase-vignette" aria-hidden="true"></div>
       <div class="showcase-content">
-        <p class="section-eyebrow" data-eyebrow>Showcase</p>
+        <p class="section-eyebrow" data-eyebrow><span class="eyebrow-tick"></span>Showcase</p>
         <h2 class="section-title" data-section-title>Next-level frame path.<br><em>Game on.</em></h2>
         <p class="section-desc" data-section-desc>The browser caps the game at 60 hz and redraws the stadium every frame. AtomHax lifts the ceiling and lets your display decide what is useful.</p>
       </div>
@@ -65,28 +69,29 @@
 
   <section class="features" id="features">
     <div class="feature" data-feature>
-      <p class="section-eyebrow" data-eyebrow>01 &mdash; Scripts</p>
+      <p class="section-eyebrow" data-eyebrow><span class="eyebrow-tick"></span>01 &mdash; Scripts</p>
       <h3 class="feature-heading" data-feature-heading>Give the game an open surface.</h3>
       <p class="feature-desc" data-feature-desc>Load a plain JavaScript file, point it at the right realm, and read the match through a bridge small enough to understand.</p>
       <div class="feature-code" data-feature-code>
         <code>const state = window.parent.g?.snap();</code>
         <code>if (state?.ok) draw(state.ball);</code>
       </div>
+      <a class="feature-link" href="scripting.html" data-feature-desc>Read the scripting reference &rarr;</a>
     </div>
     <div class="feature" data-feature>
-      <p class="section-eyebrow" data-eyebrow>02 &mdash; Room shell</p>
+      <p class="section-eyebrow" data-eyebrow><span class="eyebrow-tick"></span>02 &mdash; Room shell</p>
       <h3 class="feature-heading" data-feature-heading>Build the room around the match.</h3>
       <p class="feature-desc" data-feature-desc>Favorites, room search, shortcuts, scripts, and chat tools belong around the field. Collapse the shell when the match starts.</p>
     </div>
     <div class="feature" data-feature>
-      <p class="section-eyebrow" data-eyebrow>03 &mdash; Preferences</p>
+      <p class="section-eyebrow" data-eyebrow><span class="eyebrow-tick"></span>03 &mdash; Preferences</p>
       <h3 class="feature-heading" data-feature-heading>Everything stays on your machine.</h3>
       <p class="feature-desc" data-feature-desc>FPS limits, render scale, shortcuts, and scripts are saved in your app data. No accounts, no telemetry, no cloud.</p>
     </div>
   </section>
 
   <section class="download" id="download">
-    <p class="section-eyebrow" data-eyebrow>Download</p>
+    <p class="section-eyebrow" data-eyebrow><span class="eyebrow-tick"></span>Download</p>
     <h2 class="section-title" data-section-title>Play outside<br><em>the tab.</em></h2>
     <p class="section-desc" data-section-desc>One Windows x64 executable. No installer. The game view stays familiar; everything around it gets out of the way.</p>
     <a class="download-btn" href="https://github.com/2Gbps/AtomHax/releases/latest/download/AtomHax-0.5.2-x64.exe" download data-cta>
@@ -97,10 +102,12 @@
 
   <footer class="footer">
     <span>AtomHax &mdash; GPL-3.0</span>
+    <a href="scripting.html">Scripts</a>
     <a href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">GitHub</a>
   </footer>
 
   <script src="app.js" type="module" defer></script>
   <script src="atom.js" type="module" defer></script>
+  <script src="dock.js" type="module" defer></script>
 </body>
 </html>
