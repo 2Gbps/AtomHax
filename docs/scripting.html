@@ -340,7 +340,7 @@
             <tr><td>ok</td><td><span class="t">0 | 1</span></td><td>1 when a room with a running game was reachable.</td></tr>
             <tr><td>pid</td><td><span class="t">number</span></td><td>Your player id in the current room.</td></tr>
             <tr><td>ball</td><td><span class="t">{x, y, vx, vy, r}</span></td><td>Ball position, velocity, radius. Coordinates in stadium units.</td></tr>
-            <tr><td>me</td><td><span class="t">{x, y, r}</span></td><td>Your disc position and radius. Missing when spectating or not spawned.</td></tr>
+            <tr><td>me</td><td><span class="t">{x, y, r}</span></td><td>Your user circle position and radius. Missing when spectating or not spawned.</td></tr>
             <tr><td>players</td><td><span class="t">number</span></td><td>Player count in the room.</td></tr>
             <tr><td>fieldW / fieldH</td><td><span class="t">number</span></td><td>Field bounding box, derived from the stadium discs. Defaults to 800&times;560 if the stadium shape can't be measured.</td></tr>
             <tr><td>frame</td><td><span class="t">number</span></td><td>Current game frame counter.</td></tr>
@@ -387,7 +387,7 @@
         </div>
         <div class="callout">
           <strong>Don't leak masks.</strong> If your script holds a direction, release it when the
-          game stops (room change, spectate) or the disc will keep drifting after your script's
+          game stops (room change, spectate) or the user circle will keep drifting after your script's
           window closes. Track what you pressed and call <code>g.out()</code> on cleanup.
         </div>
 
@@ -523,7 +523,7 @@ document.<span class="c-fn">addEventListener</span>(<span class="c-str">'keydown
 
       <section id="example">
         <h2>Full example</h2>
-        <p>A complete, minimal script: chase assist. It keeps the disc moving toward the ball while a hotkey is held, and cleans up its input on room loss.</p>
+        <p>A complete, minimal script: chase assist. It keeps the user circle moving toward the ball while a hotkey is held, and cleans up its input on room loss.</p>
         <div class="codeblock" data-code>
           <div class="cb-head"><span>chase-assist.js</span><button class="copy-btn">copy</button></div>
           <pre><span class="c-com">// ==UserScript==</span>
