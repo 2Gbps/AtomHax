@@ -1,0 +1,24 @@
+.aider*
+
+# build artifacts and heavy binaries — releases carry the exes
+*.exe
+node_modules/
+haxball-client/node_modules/
+haxball-client/dist/
+haxball-client/dist2/
+haxball-client/built_exes/
+haxball-client/stt-model/
+haxball-client/coolbar/*.wasm
+
+# generated image assets, not source
+Gemini_Generated_Image_*
+OIP.webp
+icons8-enter-48.png
+
+# working files
+game-diff.txt
+message.txt
+
+# source moved to the private AtomHax-source repo
+HaxBall_BlockHelper.user.js
+build.sh
