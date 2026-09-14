@@ -1,92 +1,76 @@
-import { animate, spring, utils } from 'animejs';
+import { animate, spring } from 'animejs';
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
 /* ═══════════════════════════════════════════════
-   DOCK — macOS magnification: each item's scale
-   and position are damped toward a target derived
-   from cursor distance. Release falls back to rest.
+   DOCK — macOS dock sizing, after imanolortega/mac-dock:
+   item size is a linear falloff of the 2D cursor
+   distance to the item's centre (200px reach), applied
+   as layout so neighbours shuffle aside. The 0.1s
+   ease-out transition is the dock's snap.
    ═══════════════════════════════════════════════ */
 const dock = document.querySelector('.dock');
 
 if (dock) {
   const items = [...dock.querySelectorAll('.dock-item')];
-  const MAGNIFY = { range: 130, scale: 0.5, lift: 9, push: 8 };
+  const REACH = 200;
+  const MIN_SIZE = 70;
+  const MAX_SIZE = 95;
+  const BASE_FONT = 11;
+  const BASE_PAD_X = 15;
+  const BASE_PAD_Y = 8;
 
-  const states = items.map((item, index) => ({
-    item,
-    index,
-    center: 0,
-    scale: reduced ? 1 : 0.55,
-    y: reduced ? 0 : -16,
-    x: 0,
-    bounce: 0,
-  }));
+  const applySize = (item, size) => {
+    const grow = size / MIN_SIZE;
+    item.style.fontSize = `${(BASE_FONT * grow).toFixed(2)}px`;
+    item.style.padding = `${(BASE_PAD_Y * grow).toFixed(2)}px ${(BASE_PAD_X * grow).toFixed(2)}px`;
+  };
 
-  let dockLeft = 0;
+  const reset = () => items.forEach((item) => applySize(item, MIN_SIZE));
+
+  let centers = [];
   const measure = () => {
-    dockLeft = dock.getBoundingClientRect().left;
-    states.forEach((state) => {
-      state.center = state.item.offsetLeft + state.item.offsetWidth / 2;
+    centers = items.map((item) => {
+      const rect = item.getBoundingClientRect();
+      return { midX: rect.left + rect.width / 2, midY: rect.top + rect.height / 2 };
     });
   };
-  measure();
 
-  let pointerX = null;
-  const trackPointer = (event) => { pointerX = event.clientX; };
+  const resize = (event) => {
+    const x = event.clientX;
+    const y = event.clientY;
+    items.forEach((item, index) => {
+      const { midX, midY } = centers[index];
+      const distance = Math.hypot(x - midX, y - midY);
+      const size = Math.max(MIN_SIZE, MAX_SIZE - (MAX_SIZE - MIN_SIZE) * (distance / REACH));
+      applySize(item, size);
+    });
+  };
 
   if (finePointer && !reduced) {
-    dock.addEventListener('pointerenter', trackPointer);
-    dock.addEventListener('pointermove', trackPointer);
-    dock.addEventListener('pointerleave', () => { pointerX = null; });
+    dock.addEventListener('pointerenter', (event) => {
+      measure();
+      resize(event);
+    });
+    dock.addEventListener('pointermove', resize);
+    dock.addEventListener('pointerleave', reset);
   }
 
-  states.forEach((state) => {
-    state.item.style.transitionDelay = `${state.index * 55}ms`;
-    requestAnimationFrame(() => state.item.classList.add('is-ready'));
+  window.addEventListener('resize', () => {
+    measure();
+    reset();
+  }, { passive: true });
 
-    state.item.addEventListener('click', () => {
-      state.bounce = -6;
-      animate(state, {
-        bounce: 0,
-        duration: 900,
-        ease: spring({ stiffness: 260, damping: 11 }),
-      });
+  /* click bounce — the dock icon hop, keyframes in styles.css */
+  items.forEach((item) => {
+    item.addEventListener('click', () => {
+      item.classList.remove('is-bouncing');
+      void item.offsetWidth;
+      item.classList.add('is-bouncing');
     });
+    item.addEventListener('animationend', () => item.classList.remove('is-bouncing'));
   });
-
-  let lastTime = performance.now();
-  const dockLoop = (now) => {
-    const dt = Math.min((now - lastTime) / 1000, 0.05);
-    lastTime = now;
-
-    states.forEach((state) => {
-      let targetScale = 1;
-      let targetX = 0;
-      let targetY = 0;
-
-      if (pointerX !== null) {
-        const delta = pointerX - dockLeft - state.center;
-        const influence = Math.max(0, 1 - Math.abs(delta) / MAGNIFY.range);
-        const eased = influence * influence * (3 - 2 * influence);
-        targetScale = 1 + MAGNIFY.scale * eased;
-        targetY = MAGNIFY.lift * eased;
-        targetX = -Math.sign(delta) * MAGNIFY.push * eased;
-      }
-
-      state.scale = utils.damp(state.scale, targetScale, 11, dt);
-      state.x = utils.damp(state.x, targetX, 11, dt);
-      state.y = utils.damp(state.y, targetY, 11, dt);
-      state.item.style.transform =
-        `translate3d(${state.x.toFixed(2)}px, ${(state.y + state.bounce).toFixed(2)}px, 0) scale(${state.scale.toFixed(4)})`;
-    });
-
-    requestAnimationFrame(dockLoop);
-  };
-  requestAnimationFrame(dockLoop);
-
-  window.addEventListener('resize', measure, { passive: true });
 
   /* ═══════════════════════════════════════════════
      ACTIVE DOT — the "running app" marker tracks the
