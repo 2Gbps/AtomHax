@@ -212,7 +212,7 @@
         <a href="#bridge">Engine bridge &middot; window.parent.g</a>
         <a href="#bridge-snap">g.snap()</a>
         <a href="#bridge-input">g.in() / g.out()</a>
-        <a href="#bridge-op">g.opGet() / g.opSet()</a>
+        <a href="#bridge-op">g.opSet()</a>
         <a href="#client-api">Client API &middot; electronAPI</a>
         <a href="#storage">Storage</a>
         <a href="#lifecycle">Lifecycle &amp; timing</a>
@@ -266,7 +266,7 @@
               <td>
                 When set to <code>true</code>, the script runs in the <strong>top-level page</strong>
                 (the Electron renderer document). When absent or false, it runs
-                <strong>inside the gameframe</strong>, in HaxBall's own JS realm.
+                <strong>inside the gameframe</strong>, in HaxBall's own JS window.
               </td>
             </tr>
           </table>
@@ -275,7 +275,7 @@
 
       <section id="contexts">
         <h2>Injection contexts</h2>
-        <p>Each script runs in exactly one of two JS realms. Pick based on what your script touches:</p>
+        <p>Each script runs in exactly one of two JS windows. Pick based on what your script touches:</p>
         <div class="api-table-wrap">
           <table class="api">
             <tr><th></th><th>Gameframe (default)</th><th>Top-level (@noframes true)</th></tr>
@@ -307,7 +307,7 @@
           </table>
         </div>
         <p>
-          In either realm, write realm-agnostic code if it helps: check <code>window.g</code> first,
+          In either window, write code that works in both if it helps: check <code>window.g</code> first,
           fall back to <code>window.parent.g</code>. The engine bridge is installed by the patched
           engine that ships with the client — it is present from the moment the gameframe loads.
         </p>
@@ -327,7 +327,6 @@
             <tr><td>snap</td><td>() &rarr; SnapResult</td><td>One-shot copy of live match state. Read-only, safe to poll.</td></tr>
             <tr><td>in</td><td>(mask: string) &rarr; 0 | 1</td><td>Presses a virtual input (adds it to the engine's active-input set).</td></tr>
             <tr><td>out</td><td>(mask: string) &rarr; 0 | 1</td><td>Releases a virtual input.</td></tr>
-            <tr><td>opGet</td><td>() &rarr; number</td><td>Current power value, 0&ndash;100.</td></tr>
             <tr><td>opSet</td><td>(v: number) &rarr; number</td><td>Sets power, clamped to 0&ndash;100. Returns the applied value.</td></tr>
             <tr><td>_rm</td><td>object</td><td>Internal room-manager handle. Unstable — use <code>snap()</code> instead of reaching into it.</td></tr>
           </table>
@@ -392,20 +391,19 @@
           window closes. Track what you pressed and call <code>g.out()</code> on cleanup.
         </div>
 
-        <h3 id="bridge-op">g.opGet() / g.opSet()</h3>
+        <h3 id="bridge-op">g.opSet()</h3>
         <p>Power value, integer 0&ndash;100, clamped on set. Zero disables; the engine's stock default is 5.</p>
         <div class="codeblock" data-code>
           <div class="cb-head"><span>power</span><button class="copy-btn">copy</button></div>
           <pre>g.<span class="c-fn">opSet</span>(<span class="c-num">25</span>);      <span class="c-com">// returns 25</span>
-g.<span class="c-fn">opSet</span>(<span class="c-num">9001</span>);   <span class="c-com">// clamped &rarr; returns 100</span>
-g.<span class="c-fn">opGet</span>();      <span class="c-com">// &rarr; 25 (after the two calls above)</span></pre>
+g.<span class="c-fn">opSet</span>(<span class="c-num">9001</span>);   <span class="c-com">// clamped &rarr; returns 100</span></pre>
         </div>
       </section>
 
       <section id="client-api">
         <h2>Client API &middot; <code>window.electronAPI</code></h2>
         <p>
-          Available in both realms through the preload bridge. Scripts rarely need these — the
+          Available in both windows through the preload bridge. Scripts rarely need these — the
           client UI already wraps them — but they're part of the contract.
         </p>
         <div class="api-table-wrap">
@@ -466,7 +464,7 @@ g.<span class="c-fn">opGet</span>();      <span class="c-com">// &rarr; 25 (afte
           <li>
             <strong>Focus.</strong> The gameframe is focused while playing; keydown listeners
             attached from the top-level page won't see keystrokes destined for the game. Scripts
-            that need keyboard input should run in the gameframe realm (no <code>@noframes</code>)
+            that need keyboard input should run in the gameframe window (no <code>@noframes</code>)
             or attach listeners to <code>gameframe.contentDocument</code>.
           </li>
           <li>
@@ -484,9 +482,9 @@ g.<span class="c-fn">opGet</span>();      <span class="c-com">// &rarr; 25 (afte
 
       <section id="patterns">
         <h2>Patterns</h2>
-        <h3>Realm-agnostic bridge access</h3>
+        <h3>Works in both windows</h3>
         <div class="codeblock" data-code>
-          <div class="cb-head"><span>works in both realms</span><button class="copy-btn">copy</button></div>
+          <div class="cb-head"><span>works in both windows</span><button class="copy-btn">copy</button></div>
           <pre><span class="c-kw">function</span> <span class="c-fn">getBridge</span>() {
   <span class="c-kw">try</span> { <span class="c-kw">if</span> (window.g &amp;&amp; window.g.bh) <span class="c-kw">return</span> window.g; } <span class="c-kw">catch</span> (e) {}
   <span class="c-kw">try</span> { <span class="c-kw">if</span> (window.parent &amp;&amp; window.parent.g &amp;&amp; window.parent.g.bh)
