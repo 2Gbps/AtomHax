@@ -387,11 +387,19 @@ try {
   });
 
   /* ═══════════════════════════════════════════════
-     SCROLL CHOREOGRAPHY — atom sweeps left to right
-     across the page; copy sits on the uncovered side.
-     Responsive keyframes via anime.js Scope.
+     SCROLL CHOREOGRAPHY — the atom holds the half of
+     the screen the copy is not using: left through the
+     hero and showcase (copy right), right margin through
+     the features (copy left), far right for the download.
+     It crosses the middle low, under the copy.
+
+     anime.js maps scroll progress over the body's whole
+     viewport traversal, so the page only ever reaches
+     ~0.86 of the timeline; poseWatch pins the span to a
+     full 1000 units so keyframe positions stay predictable.
      ═══════════════════════════════════════════════ */
   let poseTimeline = null;
+  const poseWatch = { progress: 0 };
 
   const scope = createScope({
     root: document.body,
@@ -408,14 +416,21 @@ try {
       autoplay: onScroll({ target: document.body, sync: true }),
       defaults: { ease: 'inOutCubic' },
     })
-      .add(scrollRig, { x: -1.75 * drift, y: 0.28, rotateY: -12, rotateX: 0, scale: mobile ? 0.62 : 0.82, duration: 160 }, 0)
-      .add(camera, { z: 8.2, y: 0.9, duration: 160 }, 0)
-      .add(scrollRig, { x: -0.45 * drift, rotateY: -150, rotateX: 24, scale: mobile ? 0.8 : 1.16, duration: 250 }, 160)
-      .add(camera, { z: 7.4, y: 1.05, duration: 250 }, 160)
-      .add(scrollRig, { x: 1.75 * drift, rotateY: -310, rotateX: -16, scale: mobile ? 0.72 : 1.0, duration: 250 }, 410)
-      .add(camera, { z: 8.9, y: 0.45, duration: 250 }, 410)
-      .add(scrollRig, { x: 2.6 * drift, y: 0.1, rotateY: -360, rotateX: 0, scale: mobile ? 0.6 : 0.85, duration: 270 }, 660)
-      .add(camera, { z: 7.6, y: 0.5, duration: 270 }, 660);
+      .add(poseWatch, { progress: 1, duration: 1000, ease: 'linear' }, 0)
+      .add(scrollRig, { x: -1.75 * drift, y: 0.28, rotateY: -12, rotateX: 0, scale: mobile ? 0.62 : 0.82, duration: 130 }, 0)
+      .add(camera, { z: 8.2, y: 0.9, duration: 130 }, 0)
+      .add(scrollRig, { x: -2.05 * drift, y: 0.1, rotateY: -70, rotateX: 18, scale: mobile ? 0.68 : 0.95, duration: 130 }, 130)
+      .add(camera, { z: 7.9, y: 0.95, duration: 130 }, 130)
+      .add(scrollRig, { x: -1.95 * drift, y: -0.3, rotateY: -150, rotateX: 0, scale: mobile ? 0.66 : 0.9, duration: 370 }, 130)
+      .add(camera, { z: 8.1, y: 0.6, duration: 370 }, 130)
+      .add(scrollRig, { x: 0, y: -2.2, rotateY: -230, rotateX: -4, scale: mobile ? 0.42 : 0.5, duration: 30 }, 610)
+      .add(camera, { z: 8.7, y: 0.3, duration: 30 }, 610)
+      .add(scrollRig, { x: 4.2 * drift, y: -1.6, rotateY: -310, rotateX: -16, scale: mobile ? 0.44 : 0.55, duration: 30 }, 640)
+      .add(camera, { z: 8.9, y: 0.45, duration: 30 }, 640)
+      .add(scrollRig, { x: 4.2 * drift, y: -1.55, rotateY: -330, rotateX: -8, scale: mobile ? 0.44 : 0.56, duration: 30 }, 680)
+      .add(camera, { z: 8.9, y: 0.45, duration: 30 }, 680)
+      .add(scrollRig, { x: 4.3 * drift, y: -0.7, rotateY: -360, rotateX: 0, scale: mobile ? 0.46 : 0.62, duration: 35 }, 820)
+      .add(camera, { z: 8.3, y: 0.35, duration: 35 }, 820);
   });
 
   /* ═══════════════════════════════════════════════

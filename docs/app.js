@@ -73,30 +73,14 @@ document.querySelectorAll('[data-counter]').forEach((el, i) => {
 });
 
 /* ═══════════════════════════════════════════════
-   SHOWCASE — pinned scrub on the right side:
-   media zoom, eyebrow + tick, char cascade, desc lift
+   SHOWCASE — media zoom only. The copy is static:
+   no scroll-scrubbed entrance on the title.
    ═══════════════════════════════════════════════ */
-const showcaseTitle = splitText('.showcase [data-section-title]', { chars: true });
-
 if (!reduced) {
   createTimeline({
     autoplay: onScroll({ target: '.showcase', sync: true }),
   })
-    .add('.showcase-media', { scale: [1, 1.16], ease: 'linear', duration: 550 }, 0)
-    .add('.showcase .section-eyebrow', { opacity: [0, 1], duration: 90 }, 60)
-    .add('.showcase .eyebrow-tick', { width: [0, '26px'], duration: 90 }, 80)
-    .add(showcaseTitle.chars, {
-      translateY: ['110%', '0%'],
-      rotate: [-6, 0],
-      opacity: [0, 1],
-      duration: 520,
-      delay: stagger(11),
-    }, 90)
-    .add('.showcase [data-section-desc]', {
-      opacity: [0, 1],
-      translateY: [22, 0],
-      duration: 220,
-    }, 260);
+    .add('.showcase-media', { scale: [1, 1.16], ease: 'linear', duration: 1000 }, 0);
 }
 
 /* ═══════════════════════════════════════════════
