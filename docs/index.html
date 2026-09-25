@@ -22,7 +22,7 @@
   </script>
 </head>
 <body>
-  <canvas id="atom-canvas" aria-hidden="true"></canvas>
+  <div class="global-media" style="position: fixed; inset: 0; z-index: -2;"><video src="assets/gameplay.mp4" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; "></video></div><div class="global-vignette" style="position: fixed; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(270deg, rgba(6, 10, 18, 0.74) 0%, rgba(6, 10, 18, 0.4) 46%, rgba(6, 10, 18, 0.08) 100%), linear-gradient(180deg, rgba(6, 10, 18, 0.55) 0%, transparent 34%, rgba(6, 10, 18, 0.72) 100%);"></div><canvas id="atom-canvas" aria-hidden="true"></canvas>
   <div class="scroll-progress" aria-hidden="true"></div>
 
   <nav class="nav">
@@ -55,10 +55,7 @@
 
   <section class="showcase" id="showcase">
     <div class="showcase-sticky">
-      <div class="showcase-media">
-        <video src="assets/gameplay.mp4" autoplay muted loop playsinline></video>
-      </div>
-      <div class="showcase-vignette" aria-hidden="true"></div>
+      
       <div class="showcase-content">
         <p class="section-eyebrow" data-eyebrow><span class="eyebrow-tick"></span>Showcase</p>
         <h2 class="section-title" data-section-title>Next-level frame path.<br><em>Game on.</em></h2>
@@ -111,3 +108,5 @@
   <script src="dock.js" type="module" defer></script>
 </body>
 </html>
+
+

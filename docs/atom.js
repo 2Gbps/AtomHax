@@ -380,7 +380,7 @@ try {
      ═══════════════════════════════════════════════ */
   onScroll({
     target: document.body,
-    sync: true,
+    syncSmooth: 0.3,
     onUpdate: (self) => {
       auroraUniforms.uScroll.value = self.progress;
     },
@@ -413,15 +413,15 @@ try {
     const drift = mobile ? 0.3 : 1;
 
     poseTimeline = createTimeline({
-      autoplay: onScroll({ target: document.body, sync: true }),
+      autoplay: onScroll({ target: document.body, syncSmooth: 0.3 }),
       defaults: { ease: 'inOutCubic' },
     })
       .add(poseWatch, { progress: 1, duration: 1000, ease: 'linear' }, 0)
-      .add(scrollRig, { x: -1.75 * drift, y: 0.28, rotateY: -12, rotateX: 0, scale: mobile ? 0.62 : 0.82, duration: 130 }, 0)
+      .add(scrollRig, { x: (mobile ? 1.75 : -1.75) * drift, y: 0.28, rotateY: -12, rotateX: 0, scale: mobile ? 0.62 : 0.82, duration: 130 }, 0)
       .add(camera, { z: 8.2, y: 0.9, duration: 130 }, 0)
-      .add(scrollRig, { x: -2.05 * drift, y: 0.1, rotateY: -70, rotateX: 18, scale: mobile ? 0.68 : 0.95, duration: 130 }, 130)
+      .add(scrollRig, { x: (mobile ? 2.05 : -2.05) * drift, y: 0.1, rotateY: -70, rotateX: 18, scale: mobile ? 0.68 : 0.95, duration: 130 }, 130)
       .add(camera, { z: 7.9, y: 0.95, duration: 130 }, 130)
-      .add(scrollRig, { x: -1.95 * drift, y: -0.3, rotateY: -150, rotateX: 0, scale: mobile ? 0.66 : 0.9, duration: 370 }, 130)
+      .add(scrollRig, { x: (mobile ? 1.95 : -1.95) * drift, y: -0.3, rotateY: -150, rotateX: 0, scale: mobile ? 0.66 : 0.9, duration: 370 }, 130)
       .add(camera, { z: 8.1, y: 0.6, duration: 370 }, 130)
       .add(scrollRig, { x: 0, y: -2.2, rotateY: -230, rotateX: -4, scale: mobile ? 0.42 : 0.5, duration: 30 }, 610)
       .add(camera, { z: 8.7, y: 0.3, duration: 30 }, 610)
@@ -545,3 +545,5 @@ function makeGlowTexture() {
   context.fillRect(0, 0, size, size);
   return new THREE.CanvasTexture(glowCanvas);
 }
+
+
