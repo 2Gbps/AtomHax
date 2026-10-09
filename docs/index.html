@@ -109,33 +109,19 @@
       </div>
     </section>
 
-    <!-- Real Client Live Preview Video -->
+    <!-- Real Live Interactive Client Engine -->
     <section class="practice-section" id="practice">
       <div class="practice-layout">
-        <div class="section-label">Live Preview</div>
-        <h2 class="section-title">Client UI &amp; Match Play.</h2>
-        <p class="section-desc">Recorded straight from the desktop executable on Windows. Room lobby, sliding dark-glass sidebar controls, and high-refresh stadium action.</p>
+        <div class="section-label">Live Interactive Client</div>
+        <h2 class="section-title">Playable in your browser.</h2>
+        <p class="section-desc">Experience the native client interface and stadium physics directly below. Choose your nickname, browse the room lobby, and take the pitch in solo practice.</p>
 
-        <div class="client-window-frame">
-          <div class="window-chrome-bar">
-            <div class="window-traffic-lights">
-              <span class="light red"></span>
-              <span class="light yellow"></span>
-              <span class="light green"></span>
-            </div>
-            <span class="window-title">AtomHax v0.5.4 &mdash; Match Engine</span>
-            <span class="window-badge badge-chrome">240 FPS</span>
-          </div>
-          <div class="practice-video-wrap">
-            <video class="client-preview-video" autoplay muted loop playsinline poster="assets/client-preview-poster.jpg">
-              <source src="assets/client-preview.mp4" type="video/mp4">
-              <source src="assets/client-preview.webm" type="video/webm">
-            </video>
-          </div>
+        <div class="client-window-frame" id="client-simulator-mount">
+          <!-- Mounts interactive client shell from client-simulator.js -->
         </div>
 
         <div class="practice-cta-group">
-          <a class="btn-chrome" href="#download" style="width: 100%;">Get AtomHax for Windows</a>
+          <a class="btn-chrome" href="#download" style="width: 100%;">Download Desktop Client for Windows</a>
         </div>
       </div>
     </section>
@@ -173,5 +159,10 @@
   <script src="app.js" type="module" defer></script>
   <script src="atom.js" type="module" defer></script>
   <script src="dock.js" type="module" defer></script>
+  <script type="module">
+    import { initClientSimulator } from './client-simulator.js';
+    const mount = document.getElementById('client-simulator-mount');
+    if (mount) initClientSimulator(mount);
+  </script>
 </body>
 </html>

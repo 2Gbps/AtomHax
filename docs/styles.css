@@ -453,7 +453,7 @@ input[type="submit"],
 
 .client-window-frame {
   margin-top: 22px;
-  background: rgba(14, 21, 32, 0.85);
+  background: rgba(14, 21, 32, 0.95);
   border: 1px solid var(--surface-border);
   border-radius: 18px;
   overflow: hidden;
@@ -462,38 +462,47 @@ input[type="submit"],
   -webkit-backdrop-filter: blur(24px);
 }
 
-.window-chrome-bar {
+.sim-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  position: relative;
+  user-select: none;
+}
+
+.sim-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  background: rgba(22, 30, 42, 0.65);
+  background: rgba(22, 30, 42, 0.75);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.window-traffic-lights {
+.sim-traffic-lights {
   display: flex;
   gap: 7px;
   align-items: center;
 }
-.window-traffic-lights .light {
+.sim-light {
   width: 10.5px;
   height: 10.5px;
   border-radius: 50%;
   display: inline-block;
+  cursor: pointer;
 }
-.window-traffic-lights .light.red { background: #ff5f57; }
-.window-traffic-lights .light.yellow { background: #febc2e; }
-.window-traffic-lights .light.green { background: #28c840; }
+.sim-light.red { background: #ff5f57; }
+.sim-light.yellow { background: #febc2e; }
+.sim-light.green { background: #28c840; }
 
-.window-title {
+.sim-title {
   font-size: 11.5px;
   font-weight: 500;
   color: var(--dim);
   letter-spacing: -0.01em;
 }
 
-.window-badge {
+.sim-fps-badge {
   font-size: 10px;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
@@ -501,18 +510,421 @@ input[type="submit"],
   background: rgba(255, 255, 255, 0.06);
 }
 
-.practice-video-wrap {
+.sim-stage {
   position: relative;
   width: 100%;
-  background: #080c14;
+  min-height: 380px;
+  background: #0b111c;
+  overflow: hidden;
 }
 
-.client-preview-video {
+/* Slide-out Sidebar */
+.sim-sidebar {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: rgba(20, 26, 36, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 12px 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transform: translateX(-115%);
+  opacity: 0;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+
+.sim-sidebar-trigger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 45px;
+  height: 100%;
+  z-index: 40;
+}
+
+.sim-sb-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  transition: all 0.15s ease;
+}
+.sim-sb-btn.traffic-close { color: #ff5f57; }
+.sim-sb-btn.traffic-min { color: #28c840; }
+.sim-sb-btn:hover { transform: scale(1.15); filter: brightness(1.2); }
+
+.sim-sb-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.sim-sb-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.sim-sb-icon-btn:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+/* Views Common */
+.sim-view {
   width: 100%;
-  height: auto;
-  aspect-ratio: 16 / 9;
+  height: 380px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Dialog Box */
+.sim-dialog-box {
+  background: rgba(18, 25, 36, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 24px 28px;
+  width: 85%;
+  max-width: 360px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.sim-dialog-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin-bottom: 16px;
+}
+
+.sim-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.sim-dialog-body.form-grid {
+  gap: 10px;
+}
+
+.sim-label {
+  font-size: 11.5px;
+  color: var(--dim);
+  font-weight: 500;
+}
+
+.sim-input, .sim-select {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.sim-input:focus, .sim-select:focus {
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.sim-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.sim-dialog-actions.split {
+  justify-content: space-between;
+}
+.sim-action-btn {
+  height: 34px !important;
+  padding: 0 18px !important;
+  font-size: 12px !important;
+}
+
+/* Lobby Table */
+.sim-lobby-wrap {
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.sim-lobby-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+}
+.sim-lobby-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+.sim-lobby-tip {
+  font-size: 10.5px;
+  color: var(--faint);
+}
+
+.sim-room-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0;
+  overflow-y: auto;
+}
+
+.sim-room-row {
+  display: grid;
+  grid-template-columns: 1fr 65px 50px 75px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+  color: var(--dim);
+  cursor: pointer;
+  align-items: center;
+  transition: all 0.15s ease;
+}
+.sim-room-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+.sim-room-row.header-row {
+  background: transparent;
+  font-weight: 600;
+  color: var(--faint);
+  cursor: default;
+}
+.sim-room-row.is-recommended {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #ffffff;
+}
+
+.badge-chrome-tag {
+  background: var(--chrome);
+  color: #05080f;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  margin-right: 6px;
+}
+
+.sim-lobby-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 10px;
+}
+.sim-btn-sm {
+  height: 30px !important;
+  padding: 0 14px !important;
+  font-size: 11.5px !important;
+}
+
+/* Arena View */
+.sim-view-arena {
+  width: 100%;
+  height: 380px;
+  position: relative;
+  background: #0f1724;
+}
+#sim-arena-canvas {
+  width: 100%;
+  height: 100%;
   display: block;
-  object-fit: cover;
+}
+
+.sim-arena-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+
+.sim-overlay-top-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+}
+.sim-pill-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.sim-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.sim-score-chip {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  color: #38bdf8;
+}
+
+.sim-overlay-top-right .sim-engine-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: #4ade80;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.sim-overlay-bottom-hint {
+  text-align: center;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.45);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  width: fit-content;
+  margin: 0 auto;
+}
+
+/* Modals */
+.sim-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sim-modal-box {
+  background: rgba(18, 25, 36, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 380px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+}
+.sim-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
+}
+.sim-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--dim);
+  font-size: 20px;
+  cursor: pointer;
+}
+.sim-modal-content {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.setting-info {
+  display: flex;
+  flex-direction: column;
+}
+.setting-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+}
+.setting-sub {
+  font-size: 10px;
+  color: var(--faint);
+}
+
+.script-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px;
+}
+.script-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.script-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #38bdf8;
+  color: #05080f;
+}
+.script-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+}
+.script-desc {
+  font-size: 10.5px;
+  color: var(--dim);
+  line-height: 1.4;
 }
 
 .practice-cta-group {
