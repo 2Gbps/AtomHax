@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#060a12">
-  <meta name="description" content="AtomHax is a native Windows HaxBall client with a cleaner frame path, local scripts, and a room UI built around the match.">
-  <title>AtomHax | HaxBall outside the tab</title>
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="AtomHax is a native Windows client for HaxBall with uncapped rendering rates, local userscript support, and a non-intrusive room interface.">
+  <title>AtomHax — Native Windows Client for HaxBall</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script type="importmap">
   {
@@ -22,91 +22,150 @@
   </script>
 </head>
 <body>
-  <div class="global-media" style="position: fixed; inset: 0; z-index: -2;"><video src="assets/gameplay.mp4" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; "></video></div><div class="global-vignette" style="position: fixed; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(270deg, rgba(6, 10, 18, 0.74) 0%, rgba(6, 10, 18, 0.4) 46%, rgba(6, 10, 18, 0.08) 100%), linear-gradient(180deg, rgba(6, 10, 18, 0.55) 0%, transparent 34%, rgba(6, 10, 18, 0.72) 100%);"></div><canvas id="atom-canvas" aria-hidden="true"></canvas>
+  <canvas id="atom-canvas" aria-hidden="true"></canvas>
   <div class="scroll-progress" aria-hidden="true"></div>
 
-  <nav class="nav">
-    <a class="nav-brand" href="#hero">AtomHax</a>
-    <div class="dock">
-      <a class="dock-item" href="#showcase">Showcase</a>
-      <a class="dock-item" href="#features">Features</a>
-      <a class="dock-item" href="scripting.html">Scripts</a>
-      <a class="dock-item" href="#download">Download</a>
-      <a class="dock-item" href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">GitHub</a>
-    </div>
-  </nav>
-
-  <section class="hero" id="hero">
-    <div class="hero-copy">
-      <p class="section-eyebrow hero-eyebrow" data-eyebrow><span class="eyebrow-tick"></span>Native Windows client &middot; v0.5.4</p>
-      <h1 class="hero-title" data-hero-title>HaxBall, outside the tab.</h1>
-      <p class="hero-sub" data-hero-sub>The same field. A client that moves with it.</p>
-      <div class="hero-actions">
-        <a class="hero-cta" href="#download" data-cta>Download for Windows</a>
-        <span class="hero-hint" id="atom-hint">drag to rotate &mdash; scroll to travel</span>
+  <!-- Apple-inspired Navigation Bar -->
+  <header class="nav-header">
+    <div class="nav-container">
+      <a class="nav-brand" href="#hero">
+        <img class="nav-brand-logo" src="assets/logo.svg" alt="" width="18" height="18" onerror="this.style.display='none'">
+        <span>AtomHax</span>
+      </a>
+      <nav class="nav-links">
+        <a class="nav-link" href="#showcase">Overview</a>
+        <a class="nav-link" href="#features">Architecture</a>
+        <a class="nav-link" href="scripting.html">API Reference</a>
+        <a class="nav-link" href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">GitHub</a>
+      </nav>
+      <div class="nav-actions">
+        <a class="nav-btn" href="#download">Get v0.5.4</a>
       </div>
     </div>
-    <div class="stats-band" data-stats>
-      <div class="stat"><span class="stat-label">Browser cap</span><span class="stat-value"><b data-counter="60">0</b><small>hz</small></span></div>
-      <div class="stat"><span class="stat-label">Display path</span><span class="stat-value"><b data-counter="144">0</b><small>hz</small></span></div>
-      <div class="stat"><span class="stat-label">Present</span><span class="stat-value">new<small>frame</small></span></div>
-    </div>
-  </section>
+  </header>
 
-  <section class="showcase" id="showcase">
-    <div class="showcase-sticky">
-      
-      <div class="showcase-content">
-        <p class="section-eyebrow" data-eyebrow><span class="eyebrow-tick"></span>Showcase</p>
-        <h2 class="section-title" data-section-title>Next-level frame path.<br><em>Game on.</em></h2>
-        <p class="section-desc" data-section-desc>The browser caps the game at 60 hz and redraws the stadium every frame. AtomHax lifts the ceiling and lets your display decide what is useful.</p>
+  <main class="section-wrapper">
+    <!-- Hero Section -->
+    <section class="hero" id="hero">
+      <div class="hero-copy">
+        <div class="tag-badge">Desktop Release &middot; Windows x64</div>
+        <h1 class="hero-title">Dedicated client.<br>Direct display pipeline.</h1>
+        <p class="hero-sub">AtomHax decouples match simulation from browser renderer locks. You get high-refresh display output, scriptable engine hooks, and zero overhead.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#download">Download AtomHax</a>
+          <a class="btn btn-secondary" href="scripting.html">Documentation</a>
+        </div>
+        <div class="hero-hint">Interactive 3D model &mdash; drag to inspect</div>
       </div>
-    </div>
-  </section>
 
-  <section class="features" id="features">
-    <div class="feature" data-feature>
-      <p class="section-eyebrow" data-eyebrow><span class="eyebrow-tick"></span>01 &mdash; Scripts</p>
-      <h3 class="feature-heading" data-feature-heading>Give the game an open surface.</h3>
-      <p class="feature-desc" data-feature-desc>Load a plain JavaScript file, point it at the right window, and read the match through a bridge small enough to understand.</p>
-      <div class="feature-code" data-feature-code>
-        <code>const state = window.parent.g?.snap();</code>
-        <code>if (state?.ok) draw(state.ball);</code>
+      <div class="stats-band">
+        <div class="stat">
+          <span class="stat-label">Browser Cap</span>
+          <span class="stat-value">60<small>Hz</small></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">AtomHax Display</span>
+          <span class="stat-value">Uncapped<small>Hz</small></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Binary Size</span>
+          <span class="stat-value">86<small>MB</small></span>
+        </div>
       </div>
-      <a class="feature-link" href="scripting.html" data-feature-desc>Read the scripting reference &rarr;</a>
-    </div>
-    <div class="feature" data-feature>
-      <p class="section-eyebrow" data-eyebrow><span class="eyebrow-tick"></span>02 &mdash; Room shell</p>
-      <h3 class="feature-heading" data-feature-heading>Build the room around the match.</h3>
-      <p class="feature-desc" data-feature-desc>Favorites, room search, shortcuts, scripts, and chat tools belong around the field. Collapse the shell when the match starts.</p>
-    </div>
-    <div class="feature" data-feature>
-      <p class="section-eyebrow" data-eyebrow><span class="eyebrow-tick"></span>03 &mdash; Preferences</p>
-      <h3 class="feature-heading" data-feature-heading>Everything stays on your machine.</h3>
-      <p class="feature-desc" data-feature-desc>FPS limits, render scale, shortcuts, and scripts are saved in your app data. No accounts, no telemetry, no cloud.</p>
-    </div>
-  </section>
+    </section>
 
-  <section class="download" id="download">
-    <p class="section-eyebrow" data-eyebrow><span class="eyebrow-tick"></span>Download</p>
-    <h2 class="section-title" data-section-title>Play outside<br><em>the tab.</em></h2>
-    <p class="section-desc" data-section-desc>One Windows x64 executable. No installer. The game view stays familiar; everything around it gets out of the way.</p>
-    <a class="download-btn" href="https://github.com/2Gbps/AtomHax/releases/latest/download/AtomHax-0.5.4-x64.exe" download data-cta>
-      <span>Download AtomHax</span><b>v0.5.4</b>
-    </a>
-    <p class="download-note" data-note>GPL-3.0 &middot; Not affiliated with HaxBall &middot; <a href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">Source</a></p>
-  </section>
+    <!-- Showcase Section -->
+    <section class="showcase" id="showcase">
+      <div class="showcase-sticky">
+        <div class="showcase-content">
+          <div class="section-label">Performance</div>
+          <h2 class="section-title">Independent frame pacing.</h2>
+          <p class="section-desc">Standard web browsers enforce a rigid composite cycle on canvas elements. AtomHax bypasses the compositor bottleneck by delivering frame draws directly to your graphics hardware at your panel's native refresh rate.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section" id="features">
+      <div class="features-layout">
+        <div class="section-label">Core Capabilities</div>
+        <h2 class="section-title">Built for match precision.</h2>
+        <p class="section-desc">Engineered for competitive players who require reproducible input timings, local customization, and clean match focus.</p>
+
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-top">
+              <div class="feature-number">01</div>
+              <h3 class="feature-title">Engine Bridge API</h3>
+              <p class="feature-text">Inject arbitrary client scripts via a direct runtime hook. Read player coordinates, ball trajectory, and physics ticks without modifying game binaries.</p>
+              <div class="feature-code">
+                <code>const snap = window.parent.g?.snap();</code>
+                <code>if (snap?.ok) trackBall(snap.ball);</code>
+              </div>
+            </div>
+            <div class="feature-footer">
+              <a class="feature-link" href="scripting.html">View scripting reference &rarr;</a>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-top">
+              <div class="feature-number">02</div>
+              <h3 class="feature-title">Collapsible Room Shell</h3>
+              <p class="feature-text">Integrated room listings, search filters, favorite tracking, and chat macros wrap around the game canvas and tuck away automatically during active play.</p>
+            </div>
+            <div class="feature-footer">
+              <span class="btn-pill-subtle">Automatic Focus Mode</span>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-top">
+              <div class="feature-number">03</div>
+              <h3 class="feature-title">Local-Only State</h3>
+              <p class="feature-text">Render resolution scale, target refresh rate, custom bindings, and script states persist strictly in your local app data directory. Zero telemetry, zero external servers.</p>
+            </div>
+            <div class="feature-footer">
+              <span class="btn-pill-subtle">%APPDATA%/atomhax</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Download Section -->
+    <section class="download-section" id="download">
+      <div class="download-box">
+        <div class="section-label">Standalone Binary</div>
+        <h2 class="section-title">Download for Windows</h2>
+        <p class="section-desc">Portable x64 executable. No background services, no installation wizard, and no account requirements.</p>
+        <div class="download-cta-group">
+          <a class="btn btn-primary" href="https://github.com/2Gbps/AtomHax/releases/download/v0.5.4/AtomHax-0.5.4-x64.exe">
+            Download Executable (v0.5.4)
+          </a>
+          <a class="btn btn-secondary" href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">
+            GitHub Repository
+          </a>
+        </div>
+        <p class="download-meta">
+          Desktop distribution &middot; Verified binary &middot; <a href="https://github.com/2Gbps/AtomHax/releases" target="_blank" rel="noreferrer">Release notes</a>
+        </p>
+      </div>
+    </section>
+  </main>
 
   <footer class="footer">
-    <span>AtomHax &mdash; GPL-3.0</span>
-    <a href="scripting.html">Scripts</a>
-    <a href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">GitHub</a>
+    <div class="footer-container">
+      <span>AtomHax &mdash; Desktop Client for HaxBall</span>
+      <div class="footer-links">
+        <a href="#hero">Back to top</a>
+        <a href="scripting.html">Scripting Reference</a>
+        <a href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">GitHub</a>
+      </div>
+    </div>
   </footer>
 
   <script src="app.js" type="module" defer></script>
   <script src="atom.js" type="module" defer></script>
-  <script src="dock.js" type="module" defer></script>
 </body>
 </html>
-
-

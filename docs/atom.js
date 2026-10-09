@@ -6,7 +6,8 @@ import 'animejs/adapters/three';
 const canvas = document.getElementById('atom-canvas');
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-try {
+if (canvas) {
+  try {
   /* ═══════════════════════════════════════════════
      RENDERER
      ═══════════════════════════════════════════════ */
@@ -410,27 +411,62 @@ try {
     const mobile = matches.mobile;
     if (poseTimeline) poseTimeline.revert();
 
-    const drift = mobile ? 0.3 : 1;
-
+    /* Dynamic smooth choreography:
+       - Hero (Scroll 0-180): Text on RIGHT, Atom fills open LEFT zone.
+       - Showcase (Scroll 180-450): Text on LEFT, Atom moves smoothly to open RIGHT zone.
+       - Features (Scroll 450-730): Cards stacked on RIGHT, Atom glides back to open LEFT zone.
+       - Download (Scroll 730-1000): Card on LEFT, Atom glides across to open RIGHT zone.
+       On mobile: Atom safely parks high and scales down so it never collides with vertical content stack.
+    */
     poseTimeline = createTimeline({
-      autoplay: onScroll({ target: document.body, syncSmooth: 0.3 }),
+      autoplay: onScroll({ target: document.body, syncSmooth: 0.35 }),
       defaults: { ease: 'inOutCubic' },
     })
       .add(poseWatch, { progress: 1, duration: 1000, ease: 'linear' }, 0)
-      .add(scrollRig, { x: (mobile ? 1.75 : -1.75) * drift, y: 0.28, rotateY: -12, rotateX: 0, scale: mobile ? 0.62 : 0.82, duration: 130 }, 0)
-      .add(camera, { z: 8.2, y: 0.9, duration: 130 }, 0)
-      .add(scrollRig, { x: (mobile ? 2.05 : -2.05) * drift, y: 0.1, rotateY: -70, rotateX: 18, scale: mobile ? 0.68 : 0.95, duration: 130 }, 130)
-      .add(camera, { z: 7.9, y: 0.95, duration: 130 }, 130)
-      .add(scrollRig, { x: (mobile ? 1.95 : -1.95) * drift, y: -0.3, rotateY: -150, rotateX: 0, scale: mobile ? 0.66 : 0.9, duration: 370 }, 130)
-      .add(camera, { z: 8.1, y: 0.6, duration: 370 }, 130)
-      .add(scrollRig, { x: 0, y: -2.2, rotateY: -230, rotateX: -4, scale: mobile ? 0.42 : 0.5, duration: 30 }, 610)
-      .add(camera, { z: 8.7, y: 0.3, duration: 30 }, 610)
-      .add(scrollRig, { x: 4.2 * drift, y: -1.6, rotateY: -310, rotateX: -16, scale: mobile ? 0.44 : 0.55, duration: 30 }, 640)
-      .add(camera, { z: 8.9, y: 0.45, duration: 30 }, 640)
-      .add(scrollRig, { x: 4.2 * drift, y: -1.55, rotateY: -330, rotateX: -8, scale: mobile ? 0.44 : 0.56, duration: 30 }, 680)
-      .add(camera, { z: 8.9, y: 0.45, duration: 30 }, 680)
-      .add(scrollRig, { x: 4.3 * drift, y: -0.7, rotateY: -360, rotateX: 0, scale: mobile ? 0.46 : 0.62, duration: 35 }, 820)
-      .add(camera, { z: 8.3, y: 0.35, duration: 35 }, 820);
+
+      /* Phase 1 — Hero: Text is on Right. Atom sits in wide open Left space. */
+      .add(scrollRig, {
+        x: mobile ? 1.4 : -2.7,
+        y: mobile ? 2.5 : 0.2,
+        rotateY: -20,
+        rotateX: 4,
+        scale: mobile ? 0.34 : 0.92,
+        duration: 180,
+      }, 0)
+      .add(camera, { z: 8.4, y: 0.4, duration: 180 }, 0)
+
+      /* Phase 2 — Showcase: Text is on Left. Atom smoothly swings across to the open Right space and scales up. */
+      .add(scrollRig, {
+        x: mobile ? 1.4 : 2.8,
+        y: mobile ? 2.3 : -0.1,
+        rotateY: -120,
+        rotateX: 14,
+        scale: mobile ? 0.36 : 1.05,
+        duration: 260,
+      }, 180)
+      .add(camera, { z: 8.0, y: 0.2, duration: 260 }, 180)
+
+      /* Phase 3 — Features: Cards stacked on Right. Atom glides back to open Left space. */
+      .add(scrollRig, {
+        x: mobile ? 1.5 : -2.8,
+        y: mobile ? 2.4 : 0.0,
+        rotateY: -240,
+        rotateX: -10,
+        scale: mobile ? 0.32 : 0.95,
+        duration: 280,
+      }, 440)
+      .add(camera, { z: 8.3, y: 0.3, duration: 280 }, 440)
+
+      /* Phase 4 — Download: Card on Left. Atom glides over to open Right space. */
+      .add(scrollRig, {
+        x: mobile ? 1.5 : 2.7,
+        y: mobile ? 2.2 : -0.2,
+        rotateY: -360,
+        rotateX: 0,
+        scale: mobile ? 0.34 : 0.90,
+        duration: 280,
+      }, 720)
+      .add(camera, { z: 8.4, y: 0.3, duration: 280 }, 720);
   });
 
   /* ═══════════════════════════════════════════════
@@ -523,9 +559,10 @@ try {
   window.addEventListener('resize', resize, { passive: true });
 
   window.__atomReady = true;
-} catch (error) {
-  document.body.classList.add('atom-failed');
-  console.error('AtomHax 3D field failed to start:', error);
+  } catch (error) {
+    document.body.classList.add('atom-failed');
+    console.error('AtomHax 3D field failed to start:', error);
+  }
 }
 
 /* ═══════════════════════════════════════════════

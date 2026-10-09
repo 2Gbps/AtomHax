@@ -1,211 +1,77 @@
-import { animate, createTimeline, onScroll, stagger, splitText, spring, utils } from 'animejs';
+import { animate, createTimeline, onScroll } from 'animejs';
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ═══════════════════════════════════════════════
-   HERO ENTRANCE — sequenced:
-   eyebrow tick draws → title char cascade (lift + rotate)
-   → sub words de-blur → CTA + hint → stats rise
+   HERO ENTRANCE — subtle Apple-like fade & lift
    ═══════════════════════════════════════════════ */
-const heroTitle = splitText('[data-hero-title]', { chars: true });
-const heroSub = splitText('[data-hero-sub]', { words: true });
+const heroCopy = document.querySelector('.hero-copy');
+const heroActions = document.querySelector('.hero-actions');
+const statsBand = document.querySelector('.stats-band');
 
-createTimeline({ defaults: { ease: 'outExpo' } })
-  .add('.hero-eyebrow', { opacity: [0, 1], duration: 500 }, 0)
-  .add('.hero-eyebrow .eyebrow-tick', { width: [0, '26px'], duration: 500, ease: 'outCubic' }, 80)
-  .add(heroTitle.chars, {
-    translateY: ['110%', '0%'],
-    rotate: [-9, 0],
-    opacity: [0, 1],
-    duration: 950,
-    delay: stagger(24),
-  }, 120)
-  .add(heroSub.words, {
-    translateY: [20, 0],
-    opacity: [0, 1],
-    filter: ['blur(6px)', 'blur(0px)'],
-    duration: 700,
-    delay: stagger(40),
-  }, 420)
-  .add('[data-cta]', { opacity: [0, 1], translateY: [16, 0], duration: 650 }, 640)
-  .add('#atom-hint', { opacity: [0, 1], duration: 420 }, 780)
-  .add('.stats-band .stat', {
-    translateY: [22, 0],
-    opacity: [0, 1],
-    duration: 700,
-    delay: stagger(110),
-  }, 860);
-
-/* ═══════════════════════════════════════════════
-   SCROLL PROGRESS BAR — scrubbed to full page scroll
-   ═══════════════════════════════════════════════ */
-createTimeline({
-  autoplay: onScroll({ target: document.body, sync: true }),
-})
-  .add('.scroll-progress', { scaleX: [0, 1], ease: 'linear', duration: 1000 });
-
-/* ═══════════════════════════════════════════════
-   HINT — breathing loop
-   ═══════════════════════════════════════════════ */
-if (!reduced) {
-  animate('#atom-hint', {
-    opacity: [0.35, 1],
-    duration: 1900,
-    alternate: true,
-    loop: true,
-    ease: 'inOutSine',
-  });
+if (heroCopy && !reduced) {
+  createTimeline({ defaults: { ease: 'outExpo' } })
+    .add('.tag-badge', { opacity: [0, 1], translateY: [-8, 0], duration: 500 }, 50)
+    .add('.hero-title', { opacity: [0, 1], translateY: [20, 0], duration: 750 }, 150)
+    .add('.hero-sub', { opacity: [0, 1], translateY: [15, 0], duration: 650 }, 300)
+    .add(heroActions, { opacity: [0, 1], translateY: [12, 0], duration: 600 }, 450)
+    .add(statsBand, { opacity: [0, 1], translateY: [15, 0], duration: 650 }, 600);
 }
 
 /* ═══════════════════════════════════════════════
-   STATS COUNTERS — above the fold → time-driven
+   SCROLL PROGRESS BAR
    ═══════════════════════════════════════════════ */
-document.querySelectorAll('[data-counter]').forEach((el, i) => {
-  const target = Number(el.dataset.counter);
-  const counter = { v: 0 };
-  animate(counter, {
-    v: target,
-    duration: 1600,
-    delay: 900 + i * 140,
-    ease: 'outExpo',
-    onUpdate: () => { el.textContent = String(Math.round(counter.v)); },
-  });
-});
-
-/* ═══════════════════════════════════════════════
-   SHOWCASE — media zoom only. The copy is static:
-   no scroll-scrubbed entrance on the title.
-   ═══════════════════════════════════════════════ */
-if (!reduced) {
+const progress = document.querySelector('.scroll-progress');
+if (progress) {
   createTimeline({
-    autoplay: onScroll({ target: '.showcase', sync: true }),
-  })
-    .add('.showcase-media', { scale: [1, 1.16], ease: 'linear', duration: 1000 }, 0);
+    autoplay: onScroll({ target: document.body, sync: true }),
+  }).add(progress, { scaleX: [0, 1], ease: 'linear', duration: 1000 });
 }
 
 /* ═══════════════════════════════════════════════
-   FEATURES — per-feature timelines:
-   tick draw, eyebrow, word cascade, paragraph lift
+   BUTTON HOVER & CLICK STYLING
    ═══════════════════════════════════════════════ */
-document.querySelectorAll('[data-feature]').forEach((feature, featureIndex) => {
-  const eyebrow = feature.querySelector('[data-eyebrow]');
-  const tick = feature.querySelector('.eyebrow-tick');
-  const heading = splitText(feature.querySelector('[data-feature-heading]'), { words: true });
-  const desc = feature.querySelector('[data-feature-desc]');
-  const code = feature.querySelector('[data-feature-code]');
-
-  const featureTimeline = createTimeline({
-    autoplay: onScroll({ target: feature }),
-    defaults: { ease: 'outExpo' },
-  })
-    .add(eyebrow, { opacity: [0, 1], translateY: [-10, 0], duration: 420 }, 0)
-    .add(tick, { width: [0, '26px'], duration: 420, ease: 'outCubic' }, 40)
-    .add(heading.words, {
-      translateY: [30, 0],
-      opacity: [0, 1],
-      duration: 820,
-      delay: stagger(26),
-    }, 60)
-    .add(desc, { opacity: [0, 1], translateY: [26, 0], duration: 700 }, 320);
-
-  if (code) {
-    featureTimeline.add(code, { translateY: [30, 0], duration: 750, ease: 'outCubic' }, 440);
-
-    /* decode-typing: every character surfaces in random order */
-    const codeSplit = splitText(code, { chars: true });
-    animate(codeSplit.chars, {
-      opacity: [0, 1],
-      duration: 240,
-      delay: () => utils.random(120, 1250 + featureIndex * 120),
-      ease: 'linear',
-      autoplay: onScroll({ target: code }),
-    });
-
+document.querySelectorAll('.btn, .nav-btn').forEach((btn) => {
+  btn.addEventListener('mouseenter', () => {
     if (!reduced) {
-      animate(code, {
-        borderColor: ['rgba(255,255,255,0.5)', 'rgba(232,238,242,0.08)'],
-        duration: 1500,
-        delay: 420,
-        ease: 'outCubic',
-      });
+      animate(btn, { scale: 1.025, duration: 180, ease: 'outQuad' });
     }
-  }
+  });
+  btn.addEventListener('mouseleave', () => {
+    if (!reduced) {
+      animate(btn, { scale: 1, duration: 180, ease: 'outQuad' });
+    }
+  });
 });
 
 /* ═══════════════════════════════════════════════
-   DOWNLOAD — sequenced entrance + button glow pulse
+   NAV HIGHLIGHTING ON SCROLL
    ═══════════════════════════════════════════════ */
-const downloadTitle = splitText('.download [data-section-title]', { chars: true });
+const navLinks = document.querySelectorAll('.nav-link');
+const trackedSections = [
+  { id: 'hero', link: null },
+  { id: 'showcase', link: document.querySelector('.nav-link[href="#showcase"]') },
+  { id: 'features', link: document.querySelector('.nav-link[href="#features"]') }
+];
 
-createTimeline({
-  autoplay: onScroll({ target: '.download' }),
-  defaults: { ease: 'outExpo' },
-})
-  .add('.download [data-eyebrow]', { opacity: [0, 1], duration: 420 }, 0)
-  .add('.download .eyebrow-tick', { width: [0, '26px'], duration: 420, ease: 'outCubic' }, 40)
-  .add(downloadTitle.chars, {
-    translateY: ['110%', '0%'],
-    rotate: [-7, 0],
-    opacity: [0, 1],
-    duration: 750,
-    delay: stagger(13),
-  }, 60)
-  .add('.download [data-section-desc]', { opacity: [0, 1], translateY: [26, 0], duration: 700 }, 240)
-  .add('.download [data-cta]', { opacity: [0, 1], translateY: [18, 0], duration: 700 }, 380)
-  .add('.download [data-note]', { opacity: [0, 1], duration: 600 }, 520);
-
-if (!reduced) {
-  animate('.download-btn', {
-    boxShadow: ['0 0 0 rgba(255,255,255,0)', '0 0 34px rgba(255,255,255,0.22)'],
-    duration: 2100,
-    alternate: true,
-    loop: true,
-    ease: 'inOutSine',
+const updateActiveNav = () => {
+  const midline = window.innerHeight * 0.35;
+  let currentActive = null;
+  trackedSections.forEach((sec) => {
+    const el = document.getElementById(sec.id);
+    if (el && el.getBoundingClientRect().top <= midline) {
+      currentActive = sec.link;
+    }
   });
-}
 
-/* ═══════════════════════════════════════════════
-   CTA — spring hover scale + magnetic pull toward cursor
-   ═══════════════════════════════════════════════ */
-if (!reduced) {
-  document.querySelectorAll('[data-cta]').forEach((cta) => {
-    cta.addEventListener('mouseenter', () => {
-      animate(cta, { scale: 1.045, duration: 400, ease: spring({ stiffness: 270, damping: 15 }) });
-    });
-    cta.addEventListener('mouseleave', () => {
-      animate(cta, { scale: 1, x: 0, y: 0, duration: 520, ease: spring({ stiffness: 230, damping: 18 }) });
-    });
-    cta.addEventListener('pointermove', (event) => {
-      const rect = cta.getBoundingClientRect();
-      const relX = (event.clientX - rect.left - rect.width / 2) / rect.width;
-      const relY = (event.clientY - rect.top - rect.height / 2) / rect.height;
-      animate(cta, { x: relX * 12, y: relY * 8, duration: 420, ease: spring({ stiffness: 210, damping: 17 }) });
-    });
+  navLinks.forEach((link) => {
+    if (link === currentActive) {
+      link.classList.add('is-active');
+    } else {
+      link.classList.remove('is-active');
+    }
   });
-}
+};
 
-/* ═══════════════════════════════════════════════
-   SCROLL VELOCITY SKEW — titles shear subtly with
-   scroll speed, damped back through utils.damp
-   ═══════════════════════════════════════════════ */
-if (!reduced) {
-  const shearTargets = [...document.querySelectorAll('[data-section-title], [data-feature-heading]')];
-  let lastScrollY = window.scrollY;
-  let shearCurrent = 0;
-  let lastTime = performance.now();
-
-  const shearLoop = (now) => {
-    const dt = Math.min((now - lastTime) / 1000, 0.05);
-    lastTime = now;
-    const velocity = (window.scrollY - lastScrollY) / Math.max(dt, 0.001);
-    lastScrollY = window.scrollY;
-    const shearTarget = utils.clamp(velocity * 0.004, -5, 5);
-    shearCurrent = utils.damp(shearCurrent, shearTarget, 9, dt);
-    const shear = shearCurrent.toFixed(3);
-    shearTargets.forEach((target) => {
-      target.style.transform = `skewY(${shear}deg)`;
-    });
-    requestAnimationFrame(shearLoop);
-  };
-  requestAnimationFrame(shearLoop);
-}
+window.addEventListener('scroll', updateActiveNav, { passive: true });
+updateActiveNav();
