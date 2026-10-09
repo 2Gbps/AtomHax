@@ -1,7 +1,5 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { animate } from 'animejs';
-import 'animejs/adapters/three';
 
 const canvas = document.getElementById('atom-canvas');
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -297,82 +295,7 @@ if (canvas) {
     electrons.push({ pivot, electron, glow, resonance, spec, index: i });
   });
 
-  /* ═══════════════════════════════════════════════
-     ANIME.JS ADAPTER — idle life of the atom
-     ═══════════════════════════════════════════════ */
-  animate(atom, {
-    scale: [0, 1],
-    duration: 1500,
-    ease: spring({ stiffness: 68, damping: 11 }),
-  });
-
-  if (!reduced) {
-    animate(spinner, { rotateY: 360, duration: 110000, ease: 'linear', loop: true });
-    animate(spinner.position, {
-      y: [0.14, -0.14],
-      duration: 5600,
-      alternate: true,
-      loop: true,
-      ease: 'inOutSine',
-    });
-    animate(core, {
-      scale: 1.07,
-      duration: 2700,
-      alternate: true,
-      loop: true,
-      ease: 'inOutSine',
-    });
-    animate(nucleusGlow.material, {
-      opacity: [0.05, 0.15],
-      duration: 3200,
-      alternate: true,
-      loop: true,
-      ease: 'inOutSine',
-    });
-    electrons.forEach((entry) => {
-      animate(entry.electron, {
-        rotateZ: 360,
-        duration: 4600 + entry.index * 950,
-        ease: 'linear',
-        loop: true,
-      });
-      animate(entry.glow.material, {
-        opacity: [0.22, 0.48],
-        duration: 2400 + entry.index * 500,
-        alternate: true,
-        loop: true,
-        ease: 'inOutSine',
-      });
-      animate(entry.electron.material, {
-        emissiveIntensity: [0.4, 0.9],
-        duration: 3000 + entry.index * 400,
-        alternate: true,
-        loop: true,
-        ease: 'inOutSine',
-      });
-      animate(entry.pivot.children[1], {
-        opacity: [0.05, 0.14],
-        duration: 3900 + entry.index * 600,
-        alternate: true,
-        loop: true,
-        ease: 'inOutSine',
-      });
-    });
-    animate(keyLight, {
-      intensity: [9, 19],
-      duration: 4300,
-      alternate: true,
-      loop: true,
-      ease: 'inOutSine',
-    });
-    animate(fillLight, {
-      intensity: [7, 15],
-      duration: 5400,
-      alternate: true,
-      loop: true,
-      ease: 'inOutSine',
-    });
-  }
+  atom.scale.set(1, 1, 1);
 
   /* ═══════════════════════════════════════════════
      DETERMINISTIC COLLISION-FREE SCROLL CHOREOGRAPHY
@@ -476,6 +399,15 @@ if (canvas) {
     scrollRig.scale.setScalar(currentScale);
     scrollRig.rotation.y = currentRotY;
     scrollRig.rotation.x = currentRotX;
+
+    // Subtle native nucleus and lighting breathing
+    if (!reduced) {
+      const elapsed = clock.getElapsedTime();
+      core.scale.setScalar(1.0 + 0.03 * Math.sin(elapsed * 2.2));
+      nucleusGlow.material.opacity = 0.08 + 0.03 * Math.sin(elapsed * 1.8);
+      keyLight.intensity = 15 + 3 * Math.sin(elapsed * 1.4);
+      fillLight.intensity = 11 + 2 * Math.cos(elapsed * 1.2);
+    }
 
     // Electron orbital revolution around nucleus
     electrons.forEach((entry) => {

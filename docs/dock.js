@@ -1,4 +1,4 @@
-import { animate, spring } from 'animejs';
+import { animate } from 'animejs';
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
