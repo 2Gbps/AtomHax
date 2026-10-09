@@ -109,19 +109,33 @@
       </div>
     </section>
 
-    <!-- Interactive Practice Gameplay Simulation -->
+    <!-- Real Client Live Preview Video -->
     <section class="practice-section" id="practice">
-      <div class="practice-card">
-        <div class="practice-canvas-wrap">
-          <canvas id="practice-canvas" width="620" height="380"></canvas>
-        </div>
-        <div class="practice-info">
-          <div class="section-label">Live Preview</div>
-          <h2 class="section-title">Field practice.</h2>
-          <p class="section-desc">Responsive inputs with frame-pacing that stays locked even during heavy stadium activity and rapid ball rebounds.</p>
-          <div style="margin-top: 8px;">
-            <a class="btn-chrome" href="#download" style="width: 100%;">Get AtomHax</a>
+      <div class="practice-layout">
+        <div class="section-label">Live Preview</div>
+        <h2 class="section-title">Client UI &amp; Match Play.</h2>
+        <p class="section-desc">Recorded straight from the desktop executable on Windows. Room lobby, sliding dark-glass sidebar controls, and high-refresh stadium action.</p>
+
+        <div class="client-window-frame">
+          <div class="window-chrome-bar">
+            <div class="window-traffic-lights">
+              <span class="light red"></span>
+              <span class="light yellow"></span>
+              <span class="light green"></span>
+            </div>
+            <span class="window-title">AtomHax v0.5.4 &mdash; Match Engine</span>
+            <span class="window-badge badge-chrome">240 FPS</span>
           </div>
+          <div class="practice-video-wrap">
+            <video class="client-preview-video" autoplay muted loop playsinline poster="assets/client-preview-poster.jpg">
+              <source src="assets/client-preview.mp4" type="video/mp4">
+              <source src="assets/client-preview.webm" type="video/webm">
+            </video>
+          </div>
+        </div>
+
+        <div class="practice-cta-group">
+          <a class="btn-chrome" href="#download" style="width: 100%;">Get AtomHax for Windows</a>
         </div>
       </div>
     </section>
@@ -159,10 +173,5 @@
   <script src="app.js" type="module" defer></script>
   <script src="atom.js" type="module" defer></script>
   <script src="dock.js" type="module" defer></script>
-  <script type="module">
-    import { initPracticeReplay } from './practice.js';
-    const canvas = document.getElementById('practice-canvas');
-    if (canvas) initPracticeReplay(canvas);
-  </script>
 </body>
 </html>

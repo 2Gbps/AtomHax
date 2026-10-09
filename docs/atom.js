@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { animate, createTimeline, createScope, onScroll, spring } from 'animejs';
+import { animate } from 'animejs';
 import 'animejs/adapters/three';
 
 const canvas = document.getElementById('atom-canvas');
@@ -375,113 +375,109 @@ if (canvas) {
   }
 
   /* ═══════════════════════════════════════════════
-     AURORA SCROLL ENERGY — page scroll feeds the
-     field; observer created once, independent of the
-     pose timeline.
+     DETERMINISTIC COLLISION-FREE SCROLL CHOREOGRAPHY
+     The atom moves and resizes ONLY when the page is
+     scrolled. It is 100% stationary when the user does
+     not scroll.
+     Position and scale are pure mathematical functions
+     of scroll progress, mapped strictly into open negative
+     space so it never intersects or sits behind any text:
+       - Hero (0% - 12%): Copy on Right -> Atom holds Left (-3.4)
+       - Glide (12% - 32%): Hero copy scrolls out -> Atom glides to Right (+3.4)
+       - Features, Practice, Download (32% - 100%): All copy on Left -> Atom holds Right (+3.4)
      ═══════════════════════════════════════════════ */
-  onScroll({
-    target: document.body,
-    syncSmooth: 0.3,
-    onUpdate: (self) => {
-      auroraUniforms.uScroll.value = self.progress;
-    },
-  });
+  function smoothstep(edge0, edge1, x) {
+    const t = Math.min(Math.max((x - edge0) / (edge1 - edge0), 0), 1);
+    return t * t * (3 - 2 * t);
+  }
+
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+
+  function computePose(progress, isMobile) {
+    if (isMobile) {
+      // Mobile (<768px): Safely parked in top header zone
+      return {
+        x: 1.6,
+        y: 2.8,
+        scale: 0.25,
+        rotY: -progress * Math.PI * 2.0,
+        rotX: 0.05,
+      };
+    }
+
+    let x, y, scale, rotY, rotX;
+
+    if (progress <= 0.12) {
+      // Hero: Copy is on the RIGHT. Atom fills open LEFT field.
+      x = -3.4;
+      y = 0.15;
+      scale = 0.88;
+      rotY = -progress * 1.5;
+      rotX = 0.08;
+    } else if (progress < 0.32) {
+      // Glide: Crosses through clear vertical negative space between sections
+      const t = smoothstep(0.12, 0.32, progress);
+      x = lerp(-3.4, 3.4, t);
+      y = lerp(0.15, 0.05, t);
+      scale = lerp(0.88, 0.90, t);
+      rotY = lerp(-0.18, -Math.PI * 0.9, t);
+      rotX = lerp(0.08, 0.12, t);
+    } else {
+      // Features, Practice, Download: All content is on the LEFT.
+      // Atom occupies open RIGHT field throughout. Never goes behind text.
+      const t = (progress - 0.32) / 0.68;
+      x = 3.4;
+      // Gentle vertical tracking centered with viewport
+      y = lerp(0.05, -0.05, smoothstep(0, 0.5, t)) + (t > 0.5 ? lerp(0, 0.05, smoothstep(0.5, 1.0, t)) : 0);
+      scale = 0.90;
+      rotY = lerp(-Math.PI * 0.9, -Math.PI * 2.8, t);
+      rotX = 0.10 + Math.sin(t * Math.PI) * 0.04;
+    }
+
+    return { x, y, scale, rotY, rotX };
+  }
 
   /* ═══════════════════════════════════════════════
-     SCROLL CHOREOGRAPHY — the atom holds the half of
-     the screen the copy is not using: left through the
-     hero and showcase (copy right), right margin through
-     the features (copy left), far right for the download.
-     It crosses the middle low, under the copy.
-
-     anime.js maps scroll progress over the body's whole
-     viewport traversal, so the page only ever reaches
-     ~0.86 of the timeline; poseWatch pins the span to a
-     full 1000 units so keyframe positions stay predictable.
-     ═══════════════════════════════════════════════ */
-  let poseTimeline = null;
-  const poseWatch = { progress: 0 };
-
-  const scope = createScope({
-    root: document.body,
-    mediaQueries: { mobile: '(max-width: 700px)' },
-  });
-
-  scope.add(({ matches }) => {
-    const mobile = matches.mobile;
-    if (poseTimeline) poseTimeline.revert();
-
-    /* Strictly bounded, collision-free trajectory:
-       1. Hero (0% - 25%): Copy is on the RIGHT. Atom expands in open LEFT field (x: -3.4, scale: 0.92).
-       2. Features (25% - 60%): Cards are on the LEFT. Atom glides across to open RIGHT field (x: +3.4, scale: 0.95).
-       3. Practice (60% - 82%): Interactive pitch. Atom pulls to far upper-right margin (x: +3.6, scale: 0.60).
-       4. Download (82% - 100%): Download box is on the LEFT. Atom fills open RIGHT field (x: +3.4, scale: 0.95).
-       Mobile (<700px): Fixed in top header zone (x: 1.6, y: 2.8, scale: 0.25) so it never clips vertical text cards.
-    */
-    poseTimeline = createTimeline({
-      autoplay: onScroll({ target: document.body, syncSmooth: 0.3 }),
-      defaults: { ease: 'inOutCubic' },
-    })
-      .add(poseWatch, { progress: 1, duration: 1000, ease: 'linear' }, 0)
-
-      /* Phase 1 — Hero: Text is on Right. Atom occupies open Left field */
-      .add(scrollRig, {
-        x: mobile ? 1.6 : -3.4,
-        y: mobile ? 2.8 : 0.15,
-        rotateY: -20,
-        rotateX: 4,
-        scale: mobile ? 0.25 : 0.92,
-        duration: 250,
-      }, 0)
-      .add(camera, { z: 8.3, y: 0.35, duration: 250 }, 0)
-
-      /* Phase 2 — Features: Text is on Left. Atom glides over to open Right field */
-      .add(scrollRig, {
-        x: mobile ? 1.6 : 3.4,
-        y: mobile ? 2.8 : 0.05,
-        rotateY: -160,
-        rotateX: 12,
-        scale: mobile ? 0.25 : 0.95,
-        duration: 350,
-      }, 250)
-      .add(camera, { z: 8.0, y: 0.2, duration: 350 }, 250)
-
-      /* Phase 3 — Practice: Interactive pitch is central-left. Atom pulls into upper-right margin */
-      .add(scrollRig, {
-        x: mobile ? 1.6 : 3.6,
-        y: mobile ? 2.8 : -0.35,
-        rotateY: -260,
-        rotateX: -6,
-        scale: mobile ? 0.25 : 0.60,
-        duration: 220,
-      }, 600)
-      .add(camera, { z: 8.4, y: 0.3, duration: 220 }, 600)
-
-      /* Phase 4 — Download: Box is on Left. Atom fills open Right field */
-      .add(scrollRig, {
-        x: mobile ? 1.6 : 3.4,
-        y: mobile ? 2.8 : -0.1,
-        rotateY: -360,
-        rotateX: 0,
-        scale: mobile ? 0.25 : 0.95,
-        duration: 180,
-      }, 820)
-      .add(camera, { z: 8.3, y: 0.35, duration: 180 }, 820);
-  });
-
-  /* ═══════════════════════════════════════════════
-     FRAME LOOP — constant smooth autonomous rotation, no user drag
+     FRAME LOOP — purely scroll-driven, no autonomous drift
      ═══════════════════════════════════════════════ */
   const clock = new THREE.Clock();
+
+  let currentX = -3.4;
+  let currentY = 0.15;
+  let currentScale = 0.88;
+  let currentRotY = 0.0;
+  let currentRotX = 0.08;
 
   const tick = () => {
     const dt = Math.min(clock.getDelta(), 0.05);
 
     auroraUniforms.uTime.value = clock.getElapsedTime();
 
-    // Constant slow smooth orbital rotation
-    atom.rotation.y += 0.003;
+    // Deterministic scroll calculation
+    const scrollMax = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
+    const scrollProgress = Math.min(Math.max(window.scrollY / scrollMax, 0), 1);
+    auroraUniforms.uScroll.value = scrollProgress;
 
+    const isMobile = window.innerWidth < 768;
+    const target = computePose(scrollProgress, isMobile);
+
+    // Frame-rate independent liquid damping
+    const damp = 1 - Math.exp(-14 * dt);
+    currentX += (target.x - currentX) * damp;
+    currentY += (target.y - currentY) * damp;
+    currentScale += (target.scale - currentScale) * damp;
+    currentRotY += (target.rotY - currentRotY) * damp;
+    currentRotX += (target.rotX - currentRotX) * damp;
+
+    scrollRig.position.x = currentX;
+    scrollRig.position.y = currentY;
+    scrollRig.scale.setScalar(currentScale);
+    scrollRig.rotation.y = currentRotY;
+    scrollRig.rotation.x = currentRotX;
+
+    // Electron orbital revolution around nucleus
     electrons.forEach((entry) => {
       entry.pivot.rotation.z += entry.spec.speed * dt;
     });
