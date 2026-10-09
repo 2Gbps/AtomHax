@@ -411,62 +411,62 @@ if (canvas) {
     const mobile = matches.mobile;
     if (poseTimeline) poseTimeline.revert();
 
-    /* Dynamic smooth choreography:
-       - Hero (Scroll 0-180): Text on RIGHT, Atom fills open LEFT zone.
-       - Showcase (Scroll 180-450): Text on LEFT, Atom moves smoothly to open RIGHT zone.
-       - Features (Scroll 450-730): Cards stacked on RIGHT, Atom glides back to open LEFT zone.
-       - Download (Scroll 730-1000): Card on LEFT, Atom glides across to open RIGHT zone.
-       On mobile: Atom safely parks high and scales down so it never collides with vertical content stack.
+    /* Deterministic, collision-free trajectory:
+       1. Hero (0% - 25%): Copy is RIGHT. Atom is stationed in open LEFT field (x: -2.85).
+       2. Features (25% - 60%): Cards are LEFT. Atom glides across to open RIGHT field (x: +2.85).
+       3. Practice (60% - 82%): Interactive pitch. Atom pulls to upper-right margin (x: +3.2).
+       4. Download (82% - 100%): Download box is LEFT. Atom fills open RIGHT field (x: +2.85).
+       Mobile: Stationary top-right parking (x: 1.6, scale: 0.32) so it never clips single-column text.
     */
     poseTimeline = createTimeline({
-      autoplay: onScroll({ target: document.body, syncSmooth: 0.35 }),
+      autoplay: onScroll({ target: document.body, syncSmooth: 0.3 }),
       defaults: { ease: 'inOutCubic' },
     })
       .add(poseWatch, { progress: 1, duration: 1000, ease: 'linear' }, 0)
 
-      /* Phase 1 — Hero: Text is on Right. Atom sits in wide open Left space. */
+      /* Phase 1 — Hero: Text is on Right. Atom occupies the open Left screen space */
       .add(scrollRig, {
-        x: mobile ? 1.4 : -2.7,
+        x: mobile ? 1.6 : -2.85,
         y: mobile ? 2.5 : 0.2,
         rotateY: -20,
         rotateX: 4,
-        scale: mobile ? 0.34 : 0.92,
-        duration: 180,
+        scale: mobile ? 0.32 : 1.15,
+        duration: 250,
       }, 0)
-      .add(camera, { z: 8.4, y: 0.4, duration: 180 }, 0)
+      .add(camera, { z: 8.3, y: 0.35, duration: 250 }, 0)
 
-      /* Phase 2 — Showcase: Text is on Left. Atom smoothly swings across to the open Right space and scales up. */
+      /* Phase 2 — Features: Text is on Left. Atom glides across to open Right screen space */
       .add(scrollRig, {
-        x: mobile ? 1.4 : 2.8,
-        y: mobile ? 2.3 : -0.1,
-        rotateY: -120,
-        rotateX: 14,
-        scale: mobile ? 0.36 : 1.05,
-        duration: 260,
-      }, 180)
-      .add(camera, { z: 8.0, y: 0.2, duration: 260 }, 180)
+        x: mobile ? 1.6 : 2.85,
+        y: mobile ? 2.5 : 0.05,
+        rotateY: -160,
+        rotateX: 12,
+        scale: mobile ? 0.32 : 1.2,
+        duration: 350,
+      }, 250)
+      .add(camera, { z: 8.0, y: 0.2, duration: 350 }, 250)
 
-      /* Phase 3 — Features: Cards stacked on Right. Atom glides back to open Left space. */
+      /* Phase 3 — Practice: Interactive pitch is central-left. Atom pulls to far right margin */
       .add(scrollRig, {
-        x: mobile ? 1.5 : -2.8,
-        y: mobile ? 2.4 : 0.0,
-        rotateY: -240,
-        rotateX: -10,
-        scale: mobile ? 0.32 : 0.95,
-        duration: 280,
-      }, 440)
-      .add(camera, { z: 8.3, y: 0.3, duration: 280 }, 440)
+        x: mobile ? 1.6 : 3.2,
+        y: mobile ? 2.5 : -0.3,
+        rotateY: -260,
+        rotateX: -6,
+        scale: mobile ? 0.32 : 0.85,
+        duration: 220,
+      }, 600)
+      .add(camera, { z: 8.4, y: 0.3, duration: 220 }, 600)
 
-      /* Phase 4 — Download: Card on Left. Atom glides over to open Right space. */
+      /* Phase 4 — Download: Box is on Left. Atom fills the open Right space */
       .add(scrollRig, {
-        x: mobile ? 1.5 : 2.7,
-        y: mobile ? 2.2 : -0.2,
+        x: mobile ? 1.6 : 2.85,
+        y: mobile ? 2.5 : -0.15,
         rotateY: -360,
         rotateX: 0,
-        scale: mobile ? 0.34 : 0.90,
-        duration: 280,
-      }, 720)
-      .add(camera, { z: 8.4, y: 0.3, duration: 280 }, 720);
+        scale: mobile ? 0.32 : 1.18,
+        duration: 180,
+      }, 820)
+      .add(camera, { z: 8.3, y: 0.35, duration: 180 }, 820);
   });
 
   /* ═══════════════════════════════════════════════

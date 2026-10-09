@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#000000">
-  <meta name="description" content="AtomHax is a native Windows client for HaxBall with uncapped rendering rates, local userscript support, and a non-intrusive room interface.">
+  <meta name="theme-color" content="#060a12">
+  <meta name="description" content="AtomHax is a native Windows desktop client for HaxBall with uncapped rendering rates, local userscript support, and match focus.">
   <title>AtomHax — Native Windows Client for HaxBall</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,64 +23,53 @@
 </head>
 <body>
   <canvas id="atom-canvas" aria-hidden="true"></canvas>
-  <div class="scroll-progress" aria-hidden="true"></div>
 
-  <!-- Apple-inspired Navigation Bar -->
-  <header class="nav-header">
-    <div class="nav-container">
-      <a class="nav-brand" href="#hero">
-        <img class="nav-brand-logo" src="assets/logo.svg" alt="" width="18" height="18" onerror="this.style.display='none'">
-        <span>AtomHax</span>
-      </a>
-      <nav class="nav-links">
-        <a class="nav-link" href="#showcase">Overview</a>
-        <a class="nav-link" href="#features">Architecture</a>
-        <a class="nav-link" href="scripting.html">API Reference</a>
-        <a class="nav-link" href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">GitHub</a>
-      </nav>
-      <div class="nav-actions">
-        <a class="nav-btn" href="#download">Get v0.5.4</a>
-      </div>
+  <!-- Restored macOS Dock Navigation -->
+  <nav class="nav">
+    <a class="nav-brand" href="#hero">
+      <img class="nav-brand-logo" src="assets/logo.svg" alt="" width="16" height="16" onerror="this.style.display='none'">
+      <span>AtomHax</span>
+    </a>
+    <div class="dock">
+      <a class="dock-item is-active" href="#hero">Overview</a>
+      <a class="dock-item" href="#features">Features</a>
+      <a class="dock-item" href="#practice">Practice</a>
+      <a class="dock-item" href="#download">Download</a>
     </div>
-  </header>
+  </nav>
 
   <main class="section-wrapper">
     <!-- Hero Section -->
     <section class="hero" id="hero">
       <div class="hero-copy">
-        <div class="tag-badge">Desktop Release &middot; Windows x64</div>
-        <h1 class="hero-title">Dedicated client.<br>Direct display pipeline.</h1>
-        <p class="hero-sub">AtomHax decouples match simulation from browser renderer locks. You get high-refresh display output, scriptable engine hooks, and zero overhead.</p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="#download">Download AtomHax</a>
-          <a class="btn btn-secondary" href="scripting.html">Documentation</a>
+        <div class="tag-badge">
+          <span class="badge-chrome">v0.5.4</span>
+          <span>Native Windows Client</span>
         </div>
-        <div class="hero-hint">Interactive 3D model &mdash; drag to inspect</div>
+        <h1 class="hero-title">HaxBall, outside the tab.</h1>
+        <p class="hero-sub">Direct desktop frame presentation, local scripting support, and a room interface designed around your match.</p>
+        <div class="hero-actions">
+          <a class="btn-chrome download-btn" href="https://github.com/2Gbps/AtomHax/releases/download/v0.5.4/AtomHax-0.5.4-x64.exe">
+            Download for Windows
+          </a>
+          <a class="btn-secondary" href="#features">
+            Explore Features
+          </a>
+        </div>
       </div>
 
       <div class="stats-band">
         <div class="stat">
-          <span class="stat-label">Browser Cap</span>
+          <span class="stat-label">Browser Standard</span>
           <span class="stat-value">60<small>Hz</small></span>
         </div>
         <div class="stat">
           <span class="stat-label">AtomHax Display</span>
-          <span class="stat-value">Uncapped<small>Hz</small></span>
+          <span class="stat-value"><span class="text-chrome">Uncapped</span><small>Hz</small></span>
         </div>
         <div class="stat">
-          <span class="stat-label">Binary Size</span>
+          <span class="stat-label">Standalone Size</span>
           <span class="stat-value">86<small>MB</small></span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Showcase Section -->
-    <section class="showcase" id="showcase">
-      <div class="showcase-sticky">
-        <div class="showcase-content">
-          <div class="section-label">Performance</div>
-          <h2 class="section-title">Independent frame pacing.</h2>
-          <p class="section-desc">Standard web browsers enforce a rigid composite cycle on canvas elements. AtomHax bypasses the compositor bottleneck by delivering frame draws directly to your graphics hardware at your panel's native refresh rate.</p>
         </div>
       </div>
     </section>
@@ -88,46 +77,50 @@
     <!-- Features Section -->
     <section class="features-section" id="features">
       <div class="features-layout">
-        <div class="section-label">Core Capabilities</div>
-        <h2 class="section-title">Built for match precision.</h2>
-        <p class="section-desc">Engineered for competitive players who require reproducible input timings, local customization, and clean match focus.</p>
+        <div class="section-label">Core Improvements</div>
+        <h2 class="section-title">Built for match speed.</h2>
+        <p class="section-desc">Everything that slows down the browser client removed, replaced with direct hardware rendering and local controls.</p>
 
         <div class="features-grid">
           <div class="feature-card">
-            <div class="feature-top">
-              <div class="feature-number">01</div>
-              <h3 class="feature-title">Engine Bridge API</h3>
-              <p class="feature-text">Inject arbitrary client scripts via a direct runtime hook. Read player coordinates, ball trajectory, and physics ticks without modifying game binaries.</p>
-              <div class="feature-code">
-                <code>const snap = window.parent.g?.snap();</code>
-                <code>if (snap?.ok) trackBall(snap.ball);</code>
-              </div>
+            <div class="feature-header">
+              <span class="feature-number">01</span>
+              <h3 class="feature-title">High Refresh Performance</h3>
             </div>
-            <div class="feature-footer">
-              <a class="feature-link" href="scripting.html">View scripting reference &rarr;</a>
-            </div>
+            <p class="feature-text">Bypasses browser vsync throttles to draw matches smoothly at 144Hz, 240Hz, or your monitor's native limit.</p>
           </div>
 
           <div class="feature-card">
-            <div class="feature-top">
-              <div class="feature-number">02</div>
-              <h3 class="feature-title">Collapsible Room Shell</h3>
-              <p class="feature-text">Integrated room listings, search filters, favorite tracking, and chat macros wrap around the game canvas and tuck away automatically during active play.</p>
+            <div class="feature-header">
+              <span class="feature-number">02</span>
+              <h3 class="feature-title">Local Scripting Support</h3>
             </div>
-            <div class="feature-footer">
-              <span class="btn-pill-subtle">Automatic Focus Mode</span>
-            </div>
+            <p class="feature-text">Run custom scripts directly from your machine. Access player position, match ball coordinates, and state events via a simple runtime bridge.</p>
           </div>
 
           <div class="feature-card">
-            <div class="feature-top">
-              <div class="feature-number">03</div>
-              <h3 class="feature-title">Local-Only State</h3>
-              <p class="feature-text">Render resolution scale, target refresh rate, custom bindings, and script states persist strictly in your local app data directory. Zero telemetry, zero external servers.</p>
+            <div class="feature-header">
+              <span class="feature-number">03</span>
+              <h3 class="feature-title">Quality of Life Additions</h3>
             </div>
-            <div class="feature-footer">
-              <span class="btn-pill-subtle">%APPDATA%/atomhax</span>
-            </div>
+            <p class="feature-text">Fast room search, persistent favorites, custom keybindings, chat macros, and automatic focus mode that hides UI during active play.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Practice Gameplay Simulation -->
+    <section class="practice-section" id="practice">
+      <div class="practice-card">
+        <div class="practice-canvas-wrap">
+          <canvas id="practice-canvas" width="620" height="380"></canvas>
+        </div>
+        <div class="practice-info">
+          <div class="section-label">Live Preview</div>
+          <h2 class="section-title">Field practice.</h2>
+          <p class="section-desc">Responsive inputs with frame-pacing that stays locked even during heavy stadium activity and rapid ball rebounds.</p>
+          <div style="margin-top: 8px;">
+            <a class="btn-chrome" href="#download" style="width: 100%;">Get AtomHax</a>
           </div>
         </div>
       </div>
@@ -136,19 +129,16 @@
     <!-- Download Section -->
     <section class="download-section" id="download">
       <div class="download-box">
-        <div class="section-label">Standalone Binary</div>
-        <h2 class="section-title">Download for Windows</h2>
-        <p class="section-desc">Portable x64 executable. No background services, no installation wizard, and no account requirements.</p>
+        <div class="section-label">Standalone Release</div>
+        <h2 class="section-title">Download AtomHax</h2>
+        <p class="section-desc">Portable Windows executable. No installer, no background services, and no accounts required.</p>
         <div class="download-cta-group">
-          <a class="btn btn-primary" href="https://github.com/2Gbps/AtomHax/releases/download/v0.5.4/AtomHax-0.5.4-x64.exe">
-            Download Executable (v0.5.4)
-          </a>
-          <a class="btn btn-secondary" href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">
-            GitHub Repository
+          <a class="btn-chrome download-btn" href="https://github.com/2Gbps/AtomHax/releases/download/v0.5.4/AtomHax-0.5.4-x64.exe">
+            Download for Windows (v0.5.4)
           </a>
         </div>
         <p class="download-meta">
-          Desktop distribution &middot; Verified binary &middot; <a href="https://github.com/2Gbps/AtomHax/releases" target="_blank" rel="noreferrer">Release notes</a>
+          Compatible with Windows 10 & 11 (x64) &middot; Portable executable
         </p>
       </div>
     </section>
@@ -158,14 +148,21 @@
     <div class="footer-container">
       <span>AtomHax &mdash; Desktop Client for HaxBall</span>
       <div class="footer-links">
-        <a href="#hero">Back to top</a>
-        <a href="scripting.html">Scripting Reference</a>
-        <a href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="#hero">Top</a>
+        <a href="#features">Features</a>
+        <a href="#practice">Practice</a>
+        <a href="#download">Download</a>
       </div>
     </div>
   </footer>
 
   <script src="app.js" type="module" defer></script>
   <script src="atom.js" type="module" defer></script>
+  <script src="dock.js" type="module" defer></script>
+  <script type="module">
+    import { initPracticeReplay } from './practice.js';
+    const canvas = document.getElementById('practice-canvas');
+    if (canvas) initPracticeReplay(canvas);
+  </script>
 </body>
 </html>
