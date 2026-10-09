@@ -83,12 +83,8 @@ img, canvas, video {
   z-index: 0;
   width: 100%;
   height: 100%;
-  cursor: grab;
-  touch-action: pan-y;
-  pointer-events: auto;
-}
-#atom-canvas:active {
-  cursor: grabbing;
+  pointer-events: none;
+  user-select: none;
 }
 body.atom-failed #atom-canvas {
   display: none;

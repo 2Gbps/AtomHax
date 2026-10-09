@@ -411,12 +411,12 @@ if (canvas) {
     const mobile = matches.mobile;
     if (poseTimeline) poseTimeline.revert();
 
-    /* Deterministic, collision-free trajectory:
-       1. Hero (0% - 25%): Copy is RIGHT. Atom is stationed in open LEFT field (x: -2.85).
-       2. Features (25% - 60%): Cards are LEFT. Atom glides across to open RIGHT field (x: +2.85).
-       3. Practice (60% - 82%): Interactive pitch. Atom pulls to upper-right margin (x: +3.2).
-       4. Download (82% - 100%): Download box is LEFT. Atom fills open RIGHT field (x: +2.85).
-       Mobile: Stationary top-right parking (x: 1.6, scale: 0.32) so it never clips single-column text.
+    /* Strictly bounded, collision-free trajectory:
+       1. Hero (0% - 25%): Copy is on the RIGHT. Atom expands in open LEFT field (x: -3.4, scale: 0.92).
+       2. Features (25% - 60%): Cards are on the LEFT. Atom glides across to open RIGHT field (x: +3.4, scale: 0.95).
+       3. Practice (60% - 82%): Interactive pitch. Atom pulls to far upper-right margin (x: +3.6, scale: 0.60).
+       4. Download (82% - 100%): Download box is on the LEFT. Atom fills open RIGHT field (x: +3.4, scale: 0.95).
+       Mobile (<700px): Fixed in top header zone (x: 1.6, y: 2.8, scale: 0.25) so it never clips vertical text cards.
     */
     poseTimeline = createTimeline({
       autoplay: onScroll({ target: document.body, syncSmooth: 0.3 }),
@@ -424,105 +424,53 @@ if (canvas) {
     })
       .add(poseWatch, { progress: 1, duration: 1000, ease: 'linear' }, 0)
 
-      /* Phase 1 — Hero: Text is on Right. Atom occupies the open Left screen space */
+      /* Phase 1 — Hero: Text is on Right. Atom occupies open Left field */
       .add(scrollRig, {
-        x: mobile ? 1.6 : -2.85,
-        y: mobile ? 2.5 : 0.2,
+        x: mobile ? 1.6 : -3.4,
+        y: mobile ? 2.8 : 0.15,
         rotateY: -20,
         rotateX: 4,
-        scale: mobile ? 0.32 : 1.15,
+        scale: mobile ? 0.25 : 0.92,
         duration: 250,
       }, 0)
       .add(camera, { z: 8.3, y: 0.35, duration: 250 }, 0)
 
-      /* Phase 2 — Features: Text is on Left. Atom glides across to open Right screen space */
+      /* Phase 2 — Features: Text is on Left. Atom glides over to open Right field */
       .add(scrollRig, {
-        x: mobile ? 1.6 : 2.85,
-        y: mobile ? 2.5 : 0.05,
+        x: mobile ? 1.6 : 3.4,
+        y: mobile ? 2.8 : 0.05,
         rotateY: -160,
         rotateX: 12,
-        scale: mobile ? 0.32 : 1.2,
+        scale: mobile ? 0.25 : 0.95,
         duration: 350,
       }, 250)
       .add(camera, { z: 8.0, y: 0.2, duration: 350 }, 250)
 
-      /* Phase 3 — Practice: Interactive pitch is central-left. Atom pulls to far right margin */
+      /* Phase 3 — Practice: Interactive pitch is central-left. Atom pulls into upper-right margin */
       .add(scrollRig, {
-        x: mobile ? 1.6 : 3.2,
-        y: mobile ? 2.5 : -0.3,
+        x: mobile ? 1.6 : 3.6,
+        y: mobile ? 2.8 : -0.35,
         rotateY: -260,
         rotateX: -6,
-        scale: mobile ? 0.32 : 0.85,
+        scale: mobile ? 0.25 : 0.60,
         duration: 220,
       }, 600)
       .add(camera, { z: 8.4, y: 0.3, duration: 220 }, 600)
 
-      /* Phase 4 — Download: Box is on Left. Atom fills the open Right space */
+      /* Phase 4 — Download: Box is on Left. Atom fills open Right field */
       .add(scrollRig, {
-        x: mobile ? 1.6 : 2.85,
-        y: mobile ? 2.5 : -0.15,
+        x: mobile ? 1.6 : 3.4,
+        y: mobile ? 2.8 : -0.1,
         rotateY: -360,
         rotateX: 0,
-        scale: mobile ? 0.32 : 1.18,
+        scale: mobile ? 0.25 : 0.95,
         duration: 180,
       }, 820)
       .add(camera, { z: 8.3, y: 0.35, duration: 180 }, 820);
   });
 
   /* ═══════════════════════════════════════════════
-     TRACKBALL DRAG — free self-rotation following the
-     gesture; horizontal spin around world-up, vertical
-     spin around camera-right; anime.js spring carries
-     release inertia to rest.
-     ═══════════════════════════════════════════════ */
-  const drag = { active: false, lastX: 0, lastY: 0 };
-  const inertia = { x: 0, y: 0 };
-  const WORLD_UP = new THREE.Vector3(0, 1, 0);
-  const cameraRight = new THREE.Vector3();
-  const rotationQuaternion = new THREE.Quaternion();
-
-  const applySpin = (dx, dy) => {
-    cameraRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
-    atom.quaternion.premultiply(rotationQuaternion.setFromAxisAngle(WORLD_UP, dx * 0.0052));
-    atom.quaternion.premultiply(rotationQuaternion.setFromAxisAngle(cameraRight, dy * 0.0052));
-  };
-
-  canvas.addEventListener('pointerdown', (event) => {
-    drag.active = true;
-    drag.lastX = event.clientX;
-    drag.lastY = event.clientY;
-    inertia.x = 0;
-    inertia.y = 0;
-    canvas.setPointerCapture(event.pointerId);
-  });
-
-  canvas.addEventListener('pointermove', (event) => {
-    if (!drag.active) return;
-    const dx = event.clientX - drag.lastX;
-    const dy = event.clientY - drag.lastY;
-    drag.lastX = event.clientX;
-    drag.lastY = event.clientY;
-    inertia.x = dx;
-    inertia.y = dy;
-    applySpin(dx, dy);
-  });
-
-  const releaseDrag = () => {
-    if (!drag.active) return;
-    drag.active = false;
-    animate(inertia, {
-      x: 0,
-      y: 0,
-      duration: 1700,
-      ease: spring({ stiffness: 52, damping: 21 }),
-    });
-  };
-
-  canvas.addEventListener('pointerup', releaseDrag);
-  canvas.addEventListener('pointercancel', releaseDrag);
-
-  /* ═══════════════════════════════════════════════
-     FRAME LOOP — inertia decay, orbit pivots, aurora clock
+     FRAME LOOP — constant smooth autonomous rotation, no user drag
      ═══════════════════════════════════════════════ */
   const clock = new THREE.Clock();
 
@@ -531,9 +479,8 @@ if (canvas) {
 
     auroraUniforms.uTime.value = clock.getElapsedTime();
 
-    if (!drag.active && (Math.abs(inertia.x) > 0.01 || Math.abs(inertia.y) > 0.01)) {
-      applySpin(inertia.x * 0.55, inertia.y * 0.55);
-    }
+    // Constant slow smooth orbital rotation
+    atom.rotation.y += 0.003;
 
     electrons.forEach((entry) => {
       entry.pivot.rotation.z += entry.spec.speed * dt;
