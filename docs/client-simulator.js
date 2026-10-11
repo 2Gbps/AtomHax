@@ -14,7 +14,7 @@ const DEFAULT_PREFS = {
   fps_unlock: true,
   render_scale: 100,
   fps_limit: 360,
-  tick_mult: 20,
+  tick_mult: 5,
   notes: [],
   shortcuts: [
     ['/e', '/extrapolation '],
@@ -255,18 +255,14 @@ export function initClientSimulator(container) {
           <span class="sim-light green" id="atom-traffic-max" title="Toggle Fullscreen" style="width:11px; height:11px; border-radius:50%; background:#28c840; cursor:pointer;"></span>
         </div>
         <div class="sim-title" style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:rgba(255,255,255,0.85); letter-spacing:-0.01em;">
-          <img src="assets/atomhax-mark.png" alt="AtomHax" style="width:16px; height:16px; border-radius:3px; object-fit:contain; display:inline-block;">
-          <span>AtomHax v0.5.4 &mdash; Native Web Presentation</span>
+          <span>Web Preview</span>
         </div>
         <div class="sim-header-meta" style="display:flex; align-items:center; gap:8px;">
           <button class="sim-fullscreen-btn" id="atom-fullscreen-btn" title="Toggle 16:9 Fullscreen">
             <i class="fa fa-arrows-alt"></i>
             <span>Fullscreen</span>
           </button>
-          <span class="sim-fps-badge" id="client-raf-fps" style="font-size:11px; font-family:monospace; padding:2px 8px; border-radius:12px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#6fe88a;">
-            60 FPS
-          </span>
-          <span style="font-size:11px; color:rgba(255,255,255,0.4);" id="client-raf-ms">16.6ms</span>
+          <span style="font-size:11px; color:rgba(255,255,255,0.4);" id="client-raf-ms">0.15ms</span>
         </div>
       </div>
 
