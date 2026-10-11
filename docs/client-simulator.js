@@ -1,35 +1,107 @@
 // AtomHax Native Client Interactive In-Browser Runtime
-// Provides full in-browser client shell: Nickname -> Lobby -> Room Creation -> Playable Custom Arena
+// Provides full in-browser client shell: Nickname -> Loading -> Lobby -> Room Creation -> Connecting -> Playable Match Arena
+// Includes authentic HaxBall visual design, sliding dark-glass sidebar, modals, AI sparring bot, audio, and userscripts.
 
 export function initClientSimulator(container) {
   if (!container) return;
 
-  let state = {
-    view: 'nick', // 'nick' | 'lobby' | 'create' | 'arena'
+  // Web Audio Context for synthesized sound effects
+  let audioCtx = null;
+  const initAudio = () => {
+    if (!audioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) audioCtx = new AudioContextClass();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  };
+
+  const playSound = (type) => {
+    try {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      if (type === 'kick') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(35, now + 0.08);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      } else if (type === 'bounce') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.06);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.06);
+      } else if (type === 'goal') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(554.37, now + 0.1);
+        osc.frequency.setValueAtTime(659.25, now + 0.2);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.45);
+      }
+    } catch (_) {}
+  };
+
+  const state = {
+    view: 'nick', // 'nick' | 'loading' | 'lobby' | 'create' | 'connecting' | 'arena'
     nick: 'AtomHax',
-    roomName: 'AtomHax Solo Arena',
-    score: 0,
-    fps: 144,
-    sidebarOpen: false,
-    settingsOpen: false,
-    scriptsOpen: false,
+    roomName: 'AtomHax Practice Arena',
+    scoreRed: 0,
+    scoreBlue: 0,
+    matchSeconds: 0,
+    matchPaused: false,
+    hudVisible: true,
     fpsLimit: 240,
-    vsyncBypass: true,
+    fps: 240,
+    renderScale: '1.0x',
+    discordRpc: true,
+    shortcuts: [
+      { key: '!p', val: '/pause' },
+      { key: '!bb', val: 'Good game everyone!' },
+      { key: '!op', val: '⚡ AtomHax Uncapped Engine Active' },
+    ],
+    scripts: {
+      blockHelper: true,
+      opMode: false,
+      haxScript: true,
+    },
+    userInteracted: false,
   };
 
   container.innerHTML = `
-    <div class="sim-shell">
+    <div class="sim-shell" id="sim-shell">
       <!-- Window Chrome Header -->
       <div class="sim-header">
         <div class="sim-traffic-lights">
-          <span class="sim-light red" title="Close"></span>
-          <span class="sim-light yellow" title="Minimize"></span>
-          <span class="sim-light green" title="Maximize"></span>
+          <span class="sim-light red" id="win-btn-close" title="Close"></span>
+          <span class="sim-light yellow" id="win-btn-min" title="Minimize"></span>
+          <span class="sim-light green" id="win-btn-max" title="Focus Mode (H)"></span>
         </div>
         <div class="sim-title-wrap">
           <span class="sim-title" id="sim-title-text">AtomHax v0.5.4 — Choose Nickname</span>
         </div>
         <div class="sim-header-meta">
+          <span class="sim-tag-bridge">⚡ Vulkan Bridge</span>
           <span class="badge-chrome sim-fps-badge" id="sim-fps-counter">240 FPS</span>
         </div>
       </div>
@@ -38,129 +110,227 @@ export function initClientSimulator(container) {
       <div class="sim-stage" id="sim-stage">
         <!-- Slide-out AtomHax Dark-Glass Sidebar -->
         <div class="sim-sidebar" id="sim-sidebar">
-          <div class="sim-sb-btn traffic-close" id="sim-btn-close">×</div>
-          <div class="sim-sb-btn traffic-min" id="sim-btn-min">–</div>
+          <div class="sim-sb-btn traffic-close" id="sim-btn-close" title="Close Window">&times;</div>
+          <div class="sim-sb-btn traffic-min" id="sim-btn-min" title="Minimize Window">&ndash;</div>
           <div class="sim-sb-actions">
             <button class="sim-sb-icon-btn" id="sim-sb-join" title="Join Room">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+              <i class="fa fa-sign-in" aria-hidden="true"></i>
             </button>
             <button class="sim-sb-icon-btn" id="sim-sb-scripts" title="Scripts">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <i class="fa fa-code" aria-hidden="true"></i>
             </button>
             <button class="sim-sb-icon-btn" id="sim-sb-settings" title="Settings">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <i class="fa fa-cog" aria-hidden="true"></i>
             </button>
           </div>
         </div>
 
         <!-- Sidebar Hover Trigger Zone on Left Margin -->
-        <div class="sim-sidebar-trigger" id="sim-sidebar-trigger"></div>
+        <div class="sim-sidebar-trigger" id="sim-sidebar-trigger" title="Hover to open AtomHax sidebar"></div>
 
-        <!-- SCREEN 1: NICKNAME SELECTION -->
+        <!-- SCREEN 1: NICKNAME SELECTION (shot_sidebar.png) -->
         <div class="sim-view sim-view-nick" id="view-nick">
-          <div class="sim-dialog-box">
-            <div class="sim-dialog-title">Choose nickname</div>
-            <div class="sim-dialog-body">
-              <label class="sim-label">Nick:</label>
-              <input type="text" class="sim-input" id="sim-nick-input" value="AtomHax" maxlength="15" autocomplete="off" spellcheck="false" autofocus />
+          <div class="sim-dialog-wrap">
+            <div class="haxball-brand-wrap">
+              <!-- Official HaxBall Logo (Star + Soccer Ball + 3D Font) -->
+              <svg class="haxball-svg-logo" width="220" height="74" viewBox="0 0 280 94" fill="none">
+                <g transform="translate(195, 34) rotate(16)">
+                  <polygon points="0,-28 8,-8 28,0 8,8 0,28 -8,8 -28,0 -8,-8" fill="#f8b334" stroke="#d97706" stroke-width="2.5" />
+                </g>
+                <g transform="translate(182, 38)">
+                  <circle cx="0" cy="0" r="21" fill="#ffffff" stroke="#12273d" stroke-width="3" />
+                  <polygon points="0,-8 7,-3 4,5 -4,5 -7,-3" fill="#1e293b" />
+                  <line x1="0" y1="-8" x2="0" y2="-19" stroke="#1e293b" stroke-width="2.2" />
+                  <line x1="7" y1="-3" x2="16" y2="-7" stroke="#1e293b" stroke-width="2.2" />
+                  <line x1="4" y1="5" x2="13" y2="15" stroke="#1e293b" stroke-width="2.2" />
+                  <line x1="-4" y1="5" x2="-13" y2="15" stroke="#1e293b" stroke-width="2.2" />
+                  <line x1="-7" y1="-3" x2="-16" y2="-7" stroke="#1e293b" stroke-width="2.2" />
+                </g>
+                <text x="12" y="66" font-family="'Arial Black', Impact, sans-serif" font-weight="900" font-size="62" fill="#12273d" stroke="#12273d" stroke-width="12" stroke-linejoin="round">HaxBall</text>
+                <text x="12" y="63" font-family="'Arial Black', Impact, sans-serif" font-weight="900" font-size="62" fill="#e25c48">HaxBall</text>
+                <text x="12" y="60" font-family="'Arial Black', Impact, sans-serif" font-weight="900" font-size="62" fill="#ffffff">HaxBall</text>
+              </svg>
             </div>
-            <div class="sim-dialog-actions">
-              <button class="btn-chrome sim-action-btn" id="sim-btn-ok">Ok</button>
+
+            <div class="sim-dialog-box">
+              <div class="sim-dialog-title">Choose nickname</div>
+              <div class="sim-dialog-body">
+                <label class="sim-label" for="sim-nick-input">Nick:</label>
+                <input type="text" class="sim-input" id="sim-nick-input" value="AtomHax" maxlength="15" autocomplete="off" spellcheck="false" />
+              </div>
+              <div class="sim-dialog-actions">
+                <button class="sim-btn-hax" id="sim-btn-ok">Ok</button>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- SCREEN 2: ROOM LOBBY TABLE -->
+        <!-- SCREEN 2: AUTHENTIC LOADING (shot_home.png) -->
+        <div class="sim-view sim-view-loading" id="view-loading" style="display: none;">
+          <div class="sim-dialog-box" style="text-align: center; max-width: 280px;">
+            <div class="sim-dialog-title" style="text-align: left;">Loading</div>
+            <div class="sim-loading-bars">
+              <div class="sim-loading-bar"></div>
+              <div class="sim-loading-bar"></div>
+              <div class="sim-loading-bar"></div>
+              <div class="sim-loading-bar"></div>
+              <div class="sim-loading-bar"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN 3: ROOM LIST LOBBY (shot_lobby.png) -->
         <div class="sim-view sim-view-lobby" id="view-lobby" style="display: none;">
-          <div class="sim-lobby-wrap">
-            <div class="sim-lobby-header">
-              <span class="sim-lobby-title">Room list</span>
-              <span class="sim-lobby-tip">Tip: Join solo practice to rehearse high-speed rebounds.</span>
+          <div class="sim-lobby-box">
+            <div class="sim-lobby-top">
+              <div class="sim-dialog-title" style="margin-bottom: 0; padding-bottom: 2px;">Room list</div>
+              <input type="text" class="sim-lobby-search" id="sim-room-search" placeholder="Filter rooms..." />
             </div>
-            <div class="sim-room-table">
-              <div class="sim-room-row header-row">
-                <span class="col-name">Name</span>
-                <span class="col-players">Players</span>
-                <span class="col-pass">Pass</span>
-                <span class="col-dist">Distance</span>
+
+            <div class="sim-lobby-body-split">
+              <!-- Room table list with flags -->
+              <div class="sim-room-list-scroll" id="sim-room-list-items">
+                <div class="sim-room-item selected" data-room="AtomHax Solo Practice">
+                  <span class="sim-room-flag">🇺🇸</span>
+                  <span class="sim-room-name">AtomHax Solo Practice Arena</span>
+                  <span class="sim-room-tag">SOLO</span>
+                  <span class="sim-room-slots">1/1</span>
+                </div>
+                <div class="sim-room-item" data-room="Competitive 3v3 Classic">
+                  <span class="sim-room-flag">🇺🇸</span>
+                  <span class="sim-room-name">[US-East] Competitive 3v3 Classic</span>
+                  <span class="sim-room-slots">5/6</span>
+                </div>
+                <div class="sim-room-item" data-room="Fast Paced Big 4v4">
+                  <span class="sim-room-flag">🇨🇦</span>
+                  <span class="sim-room-name">[CA] Fast Paced Big Stadium 4v4</span>
+                  <span class="sim-room-slots">7/8</span>
+                </div>
+                <div class="sim-room-item" data-room="Real Soccer League">
+                  <span class="sim-room-flag">🇬🇧</span>
+                  <span class="sim-room-name">[EU-West] Real Soccer 11v11 Open</span>
+                  <span class="sim-room-slots">14/22</span>
+                </div>
+                <div class="sim-room-item" data-room="Futsal Masters 1v1">
+                  <span class="sim-room-flag">🇩🇪</span>
+                  <span class="sim-room-name">[EU-Central] 1v1 Futsal Masters</span>
+                  <span class="sim-room-slots">2/2</span>
+                </div>
+                <div class="sim-room-item" data-room="X1 Sem Regras">
+                  <span class="sim-room-flag">🇧🇷</span>
+                  <span class="sim-room-name">[SA-BR] X1 Sem Regras Pro</span>
+                  <span class="sim-room-slots">3/4</span>
+                </div>
               </div>
-              <div class="sim-room-row is-recommended" id="room-solo-practice">
-                <span class="col-name"><span class="badge-chrome-tag">PRACTICE</span> AtomHax Solo Arena</span>
-                <span class="col-players">1/1</span>
-                <span class="col-pass">No</span>
-                <span class="col-dist">0 km</span>
+
+              <!-- Right action buttons matching shot_lobby.png -->
+              <div class="sim-lobby-btn-stack">
+                <button class="sim-btn-hax sim-stack-btn" id="sim-lobby-refresh"><i class="fa fa-refresh"></i> Refresh</button>
+                <button class="sim-btn-hax sim-stack-btn" id="sim-lobby-join-modal"><i class="fa fa-sign-in"></i> Join Room</button>
+                <button class="sim-btn-hax sim-stack-btn" id="sim-lobby-create"><i class="fa fa-plus"></i> Create Room</button>
+                <button class="sim-btn-hax sim-stack-btn secondary" id="sim-lobby-replays"><i class="fa fa-film"></i> Replays</button>
+                <button class="sim-btn-hax sim-stack-btn secondary" id="sim-lobby-settings"><i class="fa fa-cog"></i> Settings</button>
+                <button class="sim-btn-hax sim-stack-btn secondary" id="sim-lobby-change-nick"><i class="fa fa-user"></i> Change Nick</button>
               </div>
-              <div class="sim-room-row">
-                <span class="col-name">United RS League | X6 (Curve, Pens) 🔴🟢</span>
-                <span class="col-players">4/30</span>
-                <span class="col-pass">No</span>
-                <span class="col-dist">956 km</span>
-              </div>
-              <div class="sim-room-row">
-                <span class="col-name">mrslammer's room [Ranked]</span>
-                <span class="col-players">1/2</span>
-                <span class="col-pass">Yes</span>
-                <span class="col-dist">714 km</span>
-              </div>
-              <div class="sim-room-row">
-                <span class="col-name">dommy's room</span>
-                <span class="col-players">1/12</span>
-                <span class="col-pass">No</span>
-                <span class="col-dist">841 km</span>
-              </div>
-            </div>
-            <div class="sim-lobby-footer">
-              <button class="btn-secondary sim-btn-sm" id="sim-btn-refresh">Refresh</button>
-              <button class="btn-chrome sim-btn-sm" id="sim-btn-open-create">Create Room</button>
-              <button class="btn-chrome sim-btn-sm" id="sim-btn-quick-play">Join Practice Arena</button>
-              <button class="btn-secondary sim-btn-sm" id="sim-btn-change-nick">Change Nick</button>
             </div>
           </div>
         </div>
 
-        <!-- SCREEN 3: CREATE ROOM DIALOG -->
+        <!-- SCREEN 4: CREATE ROOM DIALOG -->
         <div class="sim-view sim-view-create" id="view-create" style="display: none;">
-          <div class="sim-dialog-box">
+          <div class="sim-dialog-box" style="max-width: 410px;">
             <div class="sim-dialog-title">Create room</div>
             <div class="sim-dialog-body form-grid">
               <label class="sim-label">Room name:</label>
-              <input type="text" class="sim-input" id="sim-roomname-input" value="AtomHax Solo Arena" maxlength="25" />
+              <input type="text" class="sim-input" id="sim-create-name" value="AtomHax Solo Practice" maxlength="28" />
               <label class="sim-label">Password:</label>
               <input type="password" class="sim-input" placeholder="(Optional)" />
               <label class="sim-label">Max players:</label>
-              <select class="sim-select">
-                <option selected>1 (Solo Practice)</option>
-                <option>2 (1v1)</option>
-                <option>4 (2v2)</option>
-                <option>6 (3v3)</option>
+              <select class="sim-select" id="sim-create-max">
+                <option value="1" selected>1 (Solo Practice)</option>
+                <option value="2">2 (1v1 Duel)</option>
+                <option value="4">4 (2v2)</option>
+                <option value="6">6 (3v3)</option>
+                <option value="8">8 (4v4)</option>
+              </select>
+              <label class="sim-label">Stadium:</label>
+              <select class="sim-select" id="sim-create-stadium">
+                <option selected>Classic</option>
+                <option>Big</option>
+                <option>Real Soccer</option>
+                <option>Small</option>
               </select>
             </div>
             <div class="sim-dialog-actions split">
-              <button class="btn-secondary sim-action-btn" id="sim-btn-cancel-create">Cancel</button>
-              <button class="btn-chrome sim-action-btn" id="sim-btn-confirm-create">Create &amp; Enter</button>
+              <button class="sim-btn-hax secondary" id="sim-create-cancel">Cancel</button>
+              <button class="sim-btn-hax" id="sim-create-confirm">Create Room</button>
             </div>
           </div>
         </div>
 
-        <!-- SCREEN 4: FULLY PLAYABLE ATOMHAX SOLO ARENA (CANVAS) -->
+        <!-- SCREEN 5: AUTHENTIC CONNECTING (shot_joined.png) -->
+        <div class="sim-view sim-view-connecting" id="view-connecting" style="display: none;">
+          <div class="sim-dialog-box" style="max-width: 320px;">
+            <div class="sim-dialog-title">Connecting</div>
+            <div style="font-size: 13px; color: #cbd5e1; line-height: 1.8; margin-bottom: 20px;">
+              Connecting to master...<br />
+              Connecting to peer...
+            </div>
+            <div class="sim-dialog-actions" style="justify-content: flex-end;">
+              <button class="sim-btn-hax" id="sim-connecting-cancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCREEN 6: PLAYABLE MATCH ARENA (FULL WORKING HAXBALL PITCH) -->
         <div class="sim-view sim-view-arena" id="view-arena" style="display: none;">
-          <canvas id="sim-arena-canvas" width="620" height="380"></canvas>
-          
-          <div class="sim-arena-overlay">
-            <div class="sim-overlay-top-left">
-              <button class="sim-pill-btn" id="sim-btn-leave-arena">&larr; Lobby</button>
-              <span class="sim-score-chip" id="sim-score-chip">GOALS: 0</span>
+          <canvas id="sim-arena-canvas" width="640" height="430"></canvas>
+
+          <!-- Top Match HUD Header -->
+          <div class="sim-match-hud" id="sim-match-hud">
+            <div class="sim-scoreboard">
+              <span class="score-red" id="hud-score-red">RED 0</span>
+              <span>-</span>
+              <span class="score-blue" id="hud-score-blue">0 BLUE</span>
+              <span class="sim-match-clock" id="hud-match-clock">00:00</span>
             </div>
-            <div class="sim-overlay-top-right">
-              <span class="sim-engine-tag">⚡ VULKAN UNLOCKED</span>
+            <div class="sim-hud-actions">
+              <button class="sim-hud-btn" id="sim-hud-pause" title="Pause Match">Pause</button>
+              <button class="sim-hud-btn" id="sim-hud-reset" title="Reset 0-0">Reset</button>
+              <button class="sim-hud-btn" id="sim-hud-leave" title="Exit to Lobby">&larr; Leave</button>
             </div>
-            <div class="sim-overlay-bottom-hint">
-              <span><b>WASD / Arrow Keys</b> to move &middot; <b>SPACE / Click</b> to kick</span>
+          </div>
+
+          <!-- In-Game Interactive Chatbox -->
+          <div class="sim-chatbox" id="sim-chatbox">
+            <div class="sim-chat-log" id="sim-chat-log">
+              <div class="sim-chat-row"><span class="sys">* Connected to AtomHax Solo Practice Arena</span></div>
+              <div class="sim-chat-row"><span class="bot">SparringBot:</span> gl hf! Press WASD to move, Space/Click to kick.</div>
+            </div>
+            <div class="sim-chat-input-bar">
+              <input type="text" class="sim-chat-input" id="sim-chat-input" placeholder="Press Enter to chat (e.g. !p, !bb)..." />
             </div>
           </div>
         </div>
 
-        <!-- MODAL: ATOMHAX CLIENT SETTINGS -->
+        <!-- MODAL: JOIN ROOM BY LINK (setupSidebar.ts joinRoomModal) -->
+        <div class="sim-modal" id="sim-modal-join" style="display: none;">
+          <div class="sim-modal-box" style="max-width: 360px;">
+            <div class="sim-modal-header">
+              <span>Join Room</span>
+              <button class="sim-modal-close" id="sim-close-join">&times;</button>
+            </div>
+            <div class="sim-modal-content">
+              <input type="text" class="sim-input" id="sim-join-link-input" placeholder="Paste room link (e.g. https://www.haxball.com/play?c=...)" style="text-align: center; height: 36px;" />
+              <div id="sim-join-status" style="font-size: 12px; min-height: 18px; text-align: center; color: #94a3b8;"></div>
+              <div class="sim-dialog-actions" style="justify-content: center;">
+                <button class="sim-btn-hax" id="sim-join-submit-btn">Join</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL: ATOMHAX CLIENT SETTINGS (settings.ts) -->
         <div class="sim-modal" id="sim-modal-settings" style="display: none;">
           <div class="sim-modal-box">
             <div class="sim-modal-header">
@@ -168,50 +338,98 @@ export function initClientSimulator(container) {
               <button class="sim-modal-close" id="sim-close-settings">&times;</button>
             </div>
             <div class="sim-modal-content">
-              <div class="setting-row">
-                <div class="setting-info">
-                  <span class="setting-title">Uncapped Vsync Bypass</span>
-                  <span class="setting-sub">Disables Chromium 60Hz presentation throttle</span>
+              <!-- FPS Limits -->
+              <div class="sim-toggle-row">
+                <span class="sim-toggle-label">Framerate Unlock</span>
+                <div class="sim-toggle-btn-group" id="grp-fps">
+                  <button class="sim-toggle-chip" data-fps="60">60Hz</button>
+                  <button class="sim-toggle-chip" data-fps="120">120Hz</button>
+                  <button class="sim-toggle-chip" data-fps="144">144Hz</button>
+                  <button class="sim-toggle-chip active" data-fps="240">240Hz</button>
+                  <button class="sim-toggle-chip" data-fps="1000">Uncapped</button>
                 </div>
-                <input type="checkbox" checked id="sim-toggle-vsync" />
               </div>
-              <div class="setting-row">
-                <div class="setting-info">
-                  <span class="setting-title">Target Framerate Limit</span>
-                  <span class="setting-sub">Matches 144Hz / 240Hz / Native Display</span>
+
+              <!-- Render Scale -->
+              <div class="sim-toggle-row">
+                <span class="sim-toggle-label">Render Scale</span>
+                <div class="sim-toggle-btn-group" id="grp-scale">
+                  <button class="sim-toggle-chip" data-scale="0.5x">0.5x</button>
+                  <button class="sim-toggle-chip" data-scale="0.8x">0.8x</button>
+                  <button class="sim-toggle-chip active" data-scale="1.0x">1.0x</button>
+                  <button class="sim-toggle-chip" data-scale="1.5x">1.5x</button>
                 </div>
-                <select class="sim-select" id="sim-select-fps">
-                  <option value="60">60 FPS (Vanilla)</option>
-                  <option value="144">144 FPS</option>
-                  <option value="240" selected>240 FPS (Uncapped)</option>
-                  <option value="1000">1000 FPS (Benchmark)</option>
-                </select>
               </div>
-              <div class="setting-row">
-                <div class="setting-info">
-                  <span class="setting-title">Local Scripting Bridge</span>
-                  <span class="setting-sub">Enables HaxScript v16.2 runtime hooks</span>
+
+              <!-- Discord Rich Presence -->
+              <div class="sim-toggle-row">
+                <span class="sim-toggle-label">Discord Rich Presence</span>
+                <div class="sim-toggle-btn-group" id="grp-rpc">
+                  <button class="sim-toggle-chip" data-rpc="off">Disabled</button>
+                  <button class="sim-toggle-chip active" data-rpc="on">Enabled</button>
                 </div>
-                <input type="checkbox" checked />
+              </div>
+
+              <!-- Chat Shortcuts -->
+              <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px;">
+                <div style="font-size: 12px; font-weight: 700; color: #ffffff; margin-bottom: 6px;">Chat Shortcuts</div>
+                <div style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">Shortcuts expand automatically when typed in match chat.</div>
+                <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #cbd5e1; font-family: 'JetBrains Mono', monospace;">
+                  <div><span style="color:#38bdf8;">!p</span> &rarr; /pause</div>
+                  <div><span style="color:#38bdf8;">!bb</span> &rarr; Good game everyone!</div>
+                  <div><span style="color:#38bdf8;">!op</span> &rarr; ⚡ AtomHax Uncapped Engine Active</div>
+                </div>
+              </div>
+
+              <!-- Auth -->
+              <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-size: 12px; font-weight: 700; color: #ffffff;">Player Auth Key</div>
+                  <div style="font-size: 10.5px; color: #94a3b8;">auth_v1_8f92a3c7...</div>
+                </div>
+                <button class="sim-btn-hax secondary" id="sim-btn-auth-view" style="height: 26px; padding: 0 10px; font-size: 11px;">View Auth</button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- MODAL: HAXSCRIPT RUNTIME -->
+        <!-- MODAL: HAXSCRIPT RUNTIME & PLUGINS (setupScripts.ts) -->
         <div class="sim-modal" id="sim-modal-scripts" style="display: none;">
           <div class="sim-modal-box">
             <div class="sim-modal-header">
-              <span>Local Script Manager</span>
+              <span>AtomHax Script Manager</span>
               <button class="sim-modal-close" id="sim-close-scripts">&times;</button>
             </div>
             <div class="sim-modal-content">
-              <div class="script-card active">
-                <div class="script-card-header">
-                  <span class="script-badge active">LOADED</span>
-                  <span class="script-name">HaxScript-v16.2-Core.js</span>
+              <!-- Script 1: BlockHelper -->
+              <div class="sim-script-item">
+                <div class="sim-script-meta">
+                  <span class="sim-script-name">BlockHelper.js</span>
+                  <span class="sim-script-desc">Renders defensive trajectory vectors &amp; rebound projection lines on pitch.</span>
                 </div>
-                <p class="script-desc">Hardware-timed kick macros, ball trajectory prediction, and frametime smoothing.</p>
+                <button class="sim-script-toggle-btn on" id="toggle-script-block">ON</button>
+              </div>
+
+              <!-- Script 2: OPMode -->
+              <div class="sim-script-item">
+                <div class="sim-script-meta">
+                  <span class="sim-script-name">OPMode.js (Kick Impulse Boost)</span>
+                  <span class="sim-script-desc">Hardware-timed kick alignment and ball exit acceleration.</span>
+                </div>
+                <button class="sim-script-toggle-btn off" id="toggle-script-op">OFF</button>
+              </div>
+
+              <!-- Script 3: HaxScript Engine Patch -->
+              <div class="sim-script-item">
+                <div class="sim-script-meta">
+                  <span class="sim-script-name">HaxScript-v16.2 Engine Bridge</span>
+                  <span class="sim-script-desc">Uncapped frame generation bridge &amp; low-latency Canvas2D patch.</span>
+                </div>
+                <button class="sim-script-toggle-btn on" id="toggle-script-bridge">ON</button>
+              </div>
+
+              <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px; display: flex; justify-content: flex-end;">
+                <button class="sim-btn-hax secondary" id="btn-import-script" style="height: 28px; padding: 0 12px; font-size: 11px;">Import hax-script.js</button>
               </div>
             </div>
           </div>
@@ -221,55 +439,86 @@ export function initClientSimulator(container) {
     </div>
   `;
 
-  // DOM elements
+  // Query DOM elements
+  const simShell = container.querySelector('#sim-shell');
   const titleText = container.querySelector('#sim-title-text');
   const fpsCounter = container.querySelector('#sim-fps-counter');
   const sidebar = container.querySelector('#sim-sidebar');
   const sidebarTrigger = container.querySelector('#sim-sidebar-trigger');
 
   const viewNick = container.querySelector('#view-nick');
+  const viewLoading = container.querySelector('#view-loading');
   const viewLobby = container.querySelector('#view-lobby');
   const viewCreate = container.querySelector('#view-create');
+  const viewConnecting = container.querySelector('#view-connecting');
   const viewArena = container.querySelector('#view-arena');
 
   const nickInput = container.querySelector('#sim-nick-input');
   const btnOk = container.querySelector('#sim-btn-ok');
-  const btnRefresh = container.querySelector('#sim-btn-refresh');
-  const btnOpenCreate = container.querySelector('#sim-btn-open-create');
-  const btnQuickPlay = container.querySelector('#sim-btn-quick-play');
-  const btnChangeNick = container.querySelector('#sim-btn-change-nick');
-  const roomSoloPractice = container.querySelector('#room-solo-practice');
 
-  const btnCancelCreate = container.querySelector('#sim-btn-cancel-create');
-  const btnConfirmCreate = container.querySelector('#sim-btn-confirm-create');
-  const roomNameInput = container.querySelector('#sim-roomname-input');
+  const roomSearch = container.querySelector('#sim-room-search');
+  const roomItems = container.querySelectorAll('.sim-room-item');
+  const btnLobbyRefresh = container.querySelector('#sim-lobby-refresh');
+  const btnLobbyJoinModal = container.querySelector('#sim-lobby-join-modal');
+  const btnLobbyCreate = container.querySelector('#sim-lobby-create');
+  const btnLobbyReplays = container.querySelector('#sim-lobby-replays');
+  const btnLobbySettings = container.querySelector('#sim-lobby-settings');
+  const btnLobbyChangeNick = container.querySelector('#sim-lobby-change-nick');
 
-  const btnLeaveArena = container.querySelector('#sim-btn-leave-arena');
-  const scoreChip = container.querySelector('#sim-score-chip');
+  const createNameInput = container.querySelector('#sim-create-name');
+  const btnCreateCancel = container.querySelector('#sim-create-cancel');
+  const btnCreateConfirm = container.querySelector('#sim-create-confirm');
+
+  const btnConnectingCancel = container.querySelector('#sim-connecting-cancel');
+
   const arenaCanvas = container.querySelector('#sim-arena-canvas');
+  const matchHud = container.querySelector('#sim-match-hud');
+  const scoreRedEl = container.querySelector('#hud-score-red');
+  const scoreBlueEl = container.querySelector('#hud-score-blue');
+  const clockEl = container.querySelector('#hud-match-clock');
+  const btnHudPause = container.querySelector('#sim-hud-pause');
+  const btnHudReset = container.querySelector('#sim-hud-reset');
+  const btnHudLeave = container.querySelector('#sim-hud-leave');
 
-  // Modal elements
+  const chatLog = container.querySelector('#sim-chat-log');
+  const chatInput = container.querySelector('#sim-chat-input');
+
+  // Modals
+  const modalJoin = container.querySelector('#sim-modal-join');
+  const btnCloseJoin = container.querySelector('#sim-close-join');
+  const joinLinkInput = container.querySelector('#sim-join-link-input');
+  const joinStatus = container.querySelector('#sim-join-status');
+  const btnJoinSubmit = container.querySelector('#sim-join-submit-btn');
+
   const modalSettings = container.querySelector('#sim-modal-settings');
-  const btnSettings = container.querySelector('#sim-sb-settings');
   const btnCloseSettings = container.querySelector('#sim-close-settings');
+  const btnSbSettings = container.querySelector('#sim-sb-settings');
 
   const modalScripts = container.querySelector('#sim-modal-scripts');
-  const btnScripts = container.querySelector('#sim-sb-scripts');
   const btnCloseScripts = container.querySelector('#sim-close-scripts');
+  const btnSbScripts = container.querySelector('#sim-sb-scripts');
   const btnSbJoin = container.querySelector('#sim-sb-join');
 
-  const selectFps = container.querySelector('#sim-select-fps');
+  const btnSbClose = container.querySelector('#sim-btn-close');
+  const btnSbMin = container.querySelector('#sim-btn-min');
+  const winBtnClose = container.querySelector('#win-btn-close');
+  const winBtnMin = container.querySelector('#win-btn-min');
+  const winBtnMax = container.querySelector('#win-btn-max');
 
-  // Sidebar triggers
+  // Listen to any user interaction inside the client window to enable audio
+  container.addEventListener('pointerdown', () => {
+    state.userInteracted = true;
+    initAudio();
+  });
+
+  // Sidebar hover and toggle logic
   const openSidebar = () => {
     sidebar.style.transform = 'translateX(0)';
     sidebar.style.opacity = '1';
-    state.sidebarOpen = true;
   };
   const closeSidebar = () => {
-    sidebar.style.transform = 'translateX(-115%)';
+    sidebar.style.transform = 'translateX(-120%)';
     sidebar.style.opacity = '0';
-    state.sidebarOpen = false;
   };
 
   sidebarTrigger.addEventListener('mouseenter', openSidebar);
@@ -277,124 +526,328 @@ export function initClientSimulator(container) {
     if (e.clientX > 150) closeSidebar();
   });
 
-  // Settings & Scripts Modal events
-  btnSettings.addEventListener('click', () => { modalSettings.style.display = 'flex'; });
-  btnCloseSettings.addEventListener('click', () => { modalSettings.style.display = 'none'; });
+  // Sidebar window controls
+  const handleMinimize = () => {
+    const stage = container.querySelector('#sim-stage');
+    if (stage.style.display === 'none') {
+      stage.style.display = 'block';
+    } else {
+      stage.style.display = 'none';
+      setTimeout(() => { stage.style.display = 'block'; }, 1800);
+    }
+  };
+  btnSbMin.addEventListener('click', handleMinimize);
+  winBtnMin.addEventListener('click', handleMinimize);
 
-  btnScripts.addEventListener('click', () => { modalScripts.style.display = 'flex'; });
-  btnCloseScripts.addEventListener('click', () => { modalScripts.style.display = 'none'; });
-
-  btnSbJoin.addEventListener('click', () => {
-    switchView('lobby');
+  btnSbClose.addEventListener('click', () => {
+    switchView('nick');
     closeSidebar();
   });
-
-  selectFps.addEventListener('change', (e) => {
-    state.fpsLimit = parseInt(e.target.value, 10);
-    fpsCounter.textContent = `${state.fpsLimit} FPS`;
+  winBtnClose.addEventListener('click', () => {
+    switchView('nick');
   });
 
-  // Navigation state machine
+  // Focus Mode toggle (hotkey H or Green traffic light)
+  const toggleFocusMode = () => {
+    state.hudVisible = !state.hudVisible;
+    matchHud.style.display = state.hudVisible ? 'flex' : 'none';
+    const chat = container.querySelector('#sim-chatbox');
+    if (chat) chat.style.display = state.hudVisible ? 'flex' : 'none';
+  };
+  winBtnMax.addEventListener('click', toggleFocusMode);
+
+  // Modals opening/closing
+  const openModal = (m) => { m.style.display = 'flex'; };
+  const closeModal = (m) => { m.style.display = 'none'; };
+
+  btnSbJoin.addEventListener('click', () => { openModal(modalJoin); closeSidebar(); });
+  btnLobbyJoinModal.addEventListener('click', () => openModal(modalJoin));
+  btnCloseJoin.addEventListener('click', () => closeModal(modalJoin));
+
+  btnSbSettings.addEventListener('click', () => { openModal(modalSettings); closeSidebar(); });
+  btnLobbySettings.addEventListener('click', () => openModal(modalSettings));
+  btnCloseSettings.addEventListener('click', () => closeModal(modalSettings));
+
+  btnSbScripts.addEventListener('click', () => { openModal(modalScripts); closeSidebar(); });
+  btnCloseScripts.addEventListener('click', () => closeModal(modalScripts));
+
+  // Join Room link validation
+  const submitJoinLink = () => {
+    const val = joinLinkInput.value.trim();
+    if (!val) return;
+    if (val.includes('haxball.com') || val.length >= 8) {
+      joinStatus.textContent = 'Connecting to room...';
+      joinStatus.style.color = '#4ade80';
+      setTimeout(() => {
+        closeModal(modalJoin);
+        state.roomName = 'Remote Match Room';
+        switchView('connecting');
+      }, 350);
+    } else {
+      joinStatus.textContent = 'Invalid link format. Please check the URL.';
+      joinStatus.style.color = '#f87171';
+    }
+  };
+  btnJoinSubmit.addEventListener('click', submitJoinLink);
+  joinLinkInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitJoinLink();
+  });
+
+  // Settings interactive toggles
+  container.querySelectorAll('#grp-fps .sim-toggle-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      container.querySelectorAll('#grp-fps .sim-toggle-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.fpsLimit = parseInt(chip.dataset.fps, 10);
+      fpsCounter.textContent = `${state.fpsLimit} FPS`;
+    });
+  });
+
+  container.querySelectorAll('#grp-scale .sim-toggle-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      container.querySelectorAll('#grp-scale .sim-toggle-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.renderScale = chip.dataset.scale;
+    });
+  });
+
+  container.querySelectorAll('#grp-rpc .sim-toggle-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      container.querySelectorAll('#grp-rpc .sim-toggle-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.discordRpc = chip.dataset.rpc === 'on';
+    });
+  });
+
+  // Script toggles
+  const toggleBlockBtn = container.querySelector('#toggle-script-block');
+  toggleBlockBtn.addEventListener('click', () => {
+    state.scripts.blockHelper = !state.scripts.blockHelper;
+    toggleBlockBtn.textContent = state.scripts.blockHelper ? 'ON' : 'OFF';
+    toggleBlockBtn.className = `sim-script-toggle-btn ${state.scripts.blockHelper ? 'on' : 'off'}`;
+    addChatMessage('AtomHax', `BlockHelper.js set to ${state.scripts.blockHelper ? 'ENABLED' : 'DISABLED'}`);
+  });
+
+  const toggleOpBtn = container.querySelector('#toggle-script-op');
+  toggleOpBtn.addEventListener('click', () => {
+    state.scripts.opMode = !state.scripts.opMode;
+    toggleOpBtn.textContent = state.scripts.opMode ? 'ON' : 'OFF';
+    toggleOpBtn.className = `sim-script-toggle-btn ${state.scripts.opMode ? 'on' : 'off'}`;
+    addChatMessage('AtomHax', `OPMode.js set to ${state.scripts.opMode ? 'ENABLED' : 'DISABLED'}`);
+  });
+
+  const toggleBridgeBtn = container.querySelector('#toggle-script-bridge');
+  toggleBridgeBtn.addEventListener('click', () => {
+    state.scripts.haxScript = !state.scripts.haxScript;
+    toggleBridgeBtn.textContent = state.scripts.haxScript ? 'ON' : 'OFF';
+    toggleBridgeBtn.className = `sim-script-toggle-btn ${state.scripts.haxScript ? 'on' : 'off'}`;
+  });
+
+  // Navigation State Machine
   function switchView(target) {
     state.view = target;
     viewNick.style.display = 'none';
+    viewLoading.style.display = 'none';
     viewLobby.style.display = 'none';
     viewCreate.style.display = 'none';
+    viewConnecting.style.display = 'none';
     viewArena.style.display = 'none';
 
     if (target === 'nick') {
       viewNick.style.display = 'flex';
       titleText.textContent = 'AtomHax v0.5.4 — Choose Nickname';
-      setTimeout(() => nickInput.focus(), 50);
+      // Only focus if the user has already interacted with the app to avoid viewport jumping
+      if (state.userInteracted) {
+        nickInput.focus({ preventScroll: true });
+      }
+    } else if (target === 'loading') {
+      viewLoading.style.display = 'flex';
+      titleText.textContent = 'AtomHax v0.5.4 — Loading...';
+      setTimeout(() => switchView('lobby'), 380);
     } else if (target === 'lobby') {
       viewLobby.style.display = 'flex';
       titleText.textContent = `AtomHax v0.5.4 — Lobby (${state.nick})`;
     } else if (target === 'create') {
       viewCreate.style.display = 'flex';
       titleText.textContent = 'AtomHax v0.5.4 — Create Match Room';
-      setTimeout(() => roomNameInput.focus(), 50);
+      if (state.userInteracted) {
+        createNameInput.focus({ preventScroll: true });
+      }
+    } else if (target === 'connecting') {
+      viewConnecting.style.display = 'flex';
+      titleText.textContent = `AtomHax v0.5.4 — Connecting to ${state.roomName}`;
+      setTimeout(() => switchView('arena'), 460);
     } else if (target === 'arena') {
       viewArena.style.display = 'block';
       titleText.textContent = `AtomHax v0.5.4 — ${state.roomName}`;
-      startArenaGame();
+      startMatch();
     }
   }
 
-  // Nickname interactions
+  // Nickname view actions
   const submitNick = () => {
     const val = nickInput.value.trim() || 'AtomHax';
     state.nick = val;
-    switchView('lobby');
+    switchView('loading');
   };
   btnOk.addEventListener('click', submitNick);
   nickInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') submitNick();
   });
 
-  // Lobby interactions
-  btnChangeNick.addEventListener('click', () => switchView('nick'));
-  btnOpenCreate.addEventListener('click', () => switchView('create'));
-  btnQuickPlay.addEventListener('click', () => switchView('arena'));
-  roomSoloPractice.addEventListener('click', () => switchView('arena'));
-
-  btnRefresh.addEventListener('click', () => {
-    btnRefresh.textContent = 'Refreshing...';
-    setTimeout(() => { btnRefresh.textContent = 'Refresh'; }, 300);
+  // Lobby view actions
+  btnLobbyChangeNick.addEventListener('click', () => switchView('nick'));
+  btnLobbyCreate.addEventListener('click', () => switchView('create'));
+  btnLobbyRefresh.addEventListener('click', () => {
+    btnLobbyRefresh.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Refreshing...';
+    setTimeout(() => {
+      btnLobbyRefresh.innerHTML = '<i class="fa fa-refresh"></i> Refresh';
+    }, 300);
+  });
+  btnLobbyReplays.addEventListener('click', () => {
+    alert('Replays: 3 match recordings saved locally in AtomHax/replays.');
   });
 
-  // Create Room interactions
-  btnCancelCreate.addEventListener('click', () => switchView('lobby'));
-  btnConfirmCreate.addEventListener('click', () => {
-    state.roomName = roomNameInput.value.trim() || 'AtomHax Solo Arena';
-    switchView('arena');
+  roomItems.forEach((item) => {
+    item.addEventListener('click', () => {
+      roomItems.forEach(i => i.classList.remove('selected'));
+      item.classList.add('selected');
+      state.roomName = item.dataset.room || 'Practice Arena';
+      switchView('connecting');
+    });
   });
 
-  // Arena interactions
-  btnLeaveArena.addEventListener('click', () => {
-    stopArenaGame();
+  // Create room actions
+  btnCreateCancel.addEventListener('click', () => switchView('lobby'));
+  btnCreateConfirm.addEventListener('click', () => {
+    state.roomName = createNameInput.value.trim() || 'AtomHax Solo Practice';
+    switchView('connecting');
+  });
+
+  btnConnectingCancel.addEventListener('click', () => switchView('lobby'));
+
+  // Match HUD actions
+  btnHudLeave.addEventListener('click', () => {
+    stopMatch();
     switchView('lobby');
+  });
+  btnHudReset.addEventListener('click', () => {
+    state.scoreRed = 0;
+    state.scoreBlue = 0;
+    state.matchSeconds = 0;
+    scoreRedEl.textContent = 'RED 0';
+    scoreBlueEl.textContent = '0 BLUE';
+    clockEl.textContent = '00:00';
+    resetPitch(false);
+  });
+  btnHudPause.addEventListener('click', () => {
+    state.matchPaused = !state.matchPaused;
+    btnHudPause.textContent = state.matchPaused ? 'Resume' : 'Pause';
+    addChatMessage('System', state.matchPaused ? '* Match paused' : '* Match resumed');
+  });
+
+  // In-Game Chat Handling
+  const addChatMessage = (sender, msg) => {
+    const row = document.createElement('div');
+    row.className = 'sim-chat-row';
+    if (sender === 'System') {
+      row.innerHTML = `<span class="sys">${msg}</span>`;
+    } else if (sender === 'Bot') {
+      row.innerHTML = `<span class="bot">SparringBot:</span> ${msg}`;
+    } else {
+      row.innerHTML = `<span class="user">${state.nick}:</span> ${msg}`;
+    }
+    chatLog.appendChild(row);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  };
+
+  const handleChatSubmit = () => {
+    let msg = chatInput.value.trim();
+    if (!msg) return;
+
+    // Check shortcuts
+    for (const sc of state.shortcuts) {
+      if (msg === sc.key) {
+        msg = sc.val;
+        break;
+      }
+    }
+
+    addChatMessage(state.nick, msg);
+    chatInput.value = '';
+
+    // Sparring Bot auto-replies to specific commands
+    if (msg.toLowerCase().includes('gg')) {
+      setTimeout(() => addChatMessage('Bot', 'gg wp! Nice shot!'), 500);
+    } else if (msg.startsWith('/pause')) {
+      btnHudPause.click();
+    }
+  };
+
+  chatInput.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') {
+      handleChatSubmit();
+      arenaCanvas.focus({ preventScroll: true });
+    }
   });
 
   /* ═══════════════════════════════════════════════
-     AUTHENTIC HAXBALL SOLO PRACTICE ARENA (CANVAS)
-     60/144Hz Interactive Canvas Physics Engine
+     AUTHENTIC HAXBALL MATCH PITCH & PHYSICS ENGINE
      ═══════════════════════════════════════════════ */
-  let gameRunning = false;
+  let matchRunning = false;
   let animId = null;
+  let matchClockTimer = null;
 
   const ctx = arenaCanvas.getContext('2d');
   const W = arenaCanvas.width;
   const H = arenaCanvas.height;
 
+  // Stadium Pitch Dimensions
   const pitch = {
-    x: 44,
-    y: 36,
-    w: W - 88,
-    h: H - 72,
-    goalH: 104,
+    x: 48,
+    y: 38,
+    w: W - 96,
+    h: H - 76,
+    goalH: 108,
+    goalDepth: 26,
   };
   const halfX = pitch.x + pitch.w / 2;
   const halfY = pitch.y + pitch.h / 2;
   const goalTop = halfY - pitch.goalH / 2;
   const goalBottom = halfY + pitch.goalH / 2;
 
+  // Player (You: Red Team)
   const player = {
-    x: halfX - 90,
+    x: halfX - 100,
     y: halfY,
     vx: 0,
     vy: 0,
     r: 15,
-    speed: 0.52,
+    speed: 0.58,
     kicking: false,
     kickCooldown: 0,
   };
 
+  // Sparring Opponent (Bot: Blue Team)
+  const bot = {
+    x: halfX + 100,
+    y: halfY,
+    vx: 0,
+    vy: 0,
+    r: 15,
+    speed: 0.44,
+    kicking: false,
+    kickCooldown: 0,
+  };
+
+  // Match Ball
   const ball = {
     x: halfX,
     y: halfY,
     vx: 0,
     vy: 0,
-    r: 9.5,
+    r: 10,
     trail: [],
   };
 
@@ -406,9 +859,22 @@ export function initClientSimulator(container) {
     kick: false,
   };
 
-  // Keyboard controls
+  // Global key event listeners
   const onKeyDown = (e) => {
     if (state.view !== 'arena') return;
+    if (document.activeElement === chatInput) return;
+
+    if (e.code === 'KeyH') {
+      toggleFocusMode();
+      e.preventDefault();
+      return;
+    }
+    if (e.code === 'Enter') {
+      chatInput.focus({ preventScroll: true });
+      e.preventDefault();
+      return;
+    }
+
     if (['ArrowUp', 'KeyW'].includes(e.code)) { keys.up = true; e.preventDefault(); }
     if (['ArrowDown', 'KeyS'].includes(e.code)) { keys.down = true; e.preventDefault(); }
     if (['ArrowLeft', 'KeyA'].includes(e.code)) { keys.left = true; e.preventDefault(); }
@@ -426,23 +892,22 @@ export function initClientSimulator(container) {
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
 
-  // Mouse / Canvas click kick trigger
-  arenaCanvas.addEventListener('mousedown', (e) => {
+  // Mouse / Touch Controls
+  arenaCanvas.addEventListener('mousedown', () => {
     if (state.view !== 'arena') return;
     triggerKick();
   });
 
-  // Touch controls for mobile / tablet
   let touchActive = false;
   arenaCanvas.addEventListener('touchstart', (e) => {
     touchActive = true;
     triggerKick();
-    handleTouchMove(e);
+    handleTouch(e);
   }, { passive: true });
 
   arenaCanvas.addEventListener('touchmove', (e) => {
     if (!touchActive) return;
-    handleTouchMove(e);
+    handleTouch(e);
   }, { passive: true });
 
   arenaCanvas.addEventListener('touchend', () => {
@@ -450,59 +915,119 @@ export function initClientSimulator(container) {
     keys.up = keys.down = keys.left = keys.right = false;
   });
 
-  function handleTouchMove(e) {
+  function handleTouch(e) {
     const rect = arenaCanvas.getBoundingClientRect();
     const touch = e.touches[0];
     const tx = (touch.clientX - rect.left) * (W / rect.width);
     const ty = (touch.clientY - rect.top) * (H / rect.height);
-    const dx = tx - player.x;
-    const dy = ty - player.y;
-    keys.left = dx < -10;
-    keys.right = dx > 10;
-    keys.up = dy < -10;
-    keys.down = dy > 10;
+    keys.left = (tx - player.x) < -12;
+    keys.right = (tx - player.x) > 12;
+    keys.up = (ty - player.y) < -12;
+    keys.down = (ty - player.y) > 12;
   }
 
   function triggerKick() {
     if (player.kickCooldown > 0) return;
     player.kicking = true;
-    player.kickCooldown = 18;
+    player.kickCooldown = 16;
+    playSound('kick');
 
-    // Check distance to ball
+    // Kick Ball calculation
     const dx = ball.x - player.x;
     const dy = ball.y - player.y;
     const dist = Math.hypot(dx, dy) || 1;
-    if (dist <= player.r + ball.r + 8) {
-      // Powerful kick strike!
-      ball.vx += (dx / dist) * 9.5;
-      ball.vy += (dy / dist) * 9.5;
+    if (dist <= player.r + ball.r + 9) {
+      // OPMode kick boost multiplier
+      const boost = state.scripts.opMode ? 14.5 : 10.2;
+      ball.vx += (dx / dist) * boost;
+      ball.vy += (dy / dist) * boost;
     }
   }
 
-  let goalFlash = 0;
+  let goalOverlay = 0;
+  let goalScorer = '';
 
-  function resetBall(scored) {
+  function resetPitch(scored, scorer) {
     if (scored) {
-      state.score++;
-      scoreChip.textContent = `GOALS: ${state.score}`;
-      goalFlash = 45;
+      goalOverlay = 55;
+      goalScorer = scorer;
+      playSound('goal');
+      if (scorer === 'RED') {
+        state.scoreRed++;
+        scoreRedEl.textContent = `RED ${state.scoreRed}`;
+        addChatMessage('System', `⚽ GOAL scored by ${state.nick}!`);
+      } else {
+        state.scoreBlue++;
+        scoreBlueEl.textContent = `${state.scoreBlue} BLUE`;
+        addChatMessage('System', `⚽ GOAL scored by SparringBot!`);
+      }
     }
     ball.x = halfX;
     ball.y = halfY;
     ball.vx = 0;
     ball.vy = 0;
-    player.x = halfX - 90;
+    ball.trail = [];
+    player.x = halfX - 100;
     player.y = halfY;
     player.vx = 0;
     player.vy = 0;
+    bot.x = halfX + 100;
+    bot.y = halfY;
+    bot.vx = 0;
+    bot.vy = 0;
   }
 
-  let lastFrameTime = performance.now();
-  let frameCount = 0;
-  let fpsTimer = 0;
+  // Sparring Bot AI logic
+  function updateBotAI() {
+    if (state.matchPaused) return;
+
+    // Bot tracks the ball if it is on right side or midfield, else returns to defense
+    const targetX = (ball.x > halfX - 40) ? ball.x : halfX + 80;
+    const targetY = ball.y;
+
+    const dx = targetX - bot.x;
+    const dy = targetY - bot.y;
+    const dist = Math.hypot(dx, dy) || 1;
+
+    bot.vx += (dx / dist) * bot.speed;
+    bot.vy += (dy / dist) * bot.speed;
+    bot.x += bot.vx;
+    bot.y += bot.vy;
+    bot.vx *= 0.90;
+    bot.vy *= 0.90;
+
+    // Bot boundary bounds
+    if (bot.x + bot.r > pitch.x + pitch.w) { bot.x = pitch.x + pitch.w - bot.r; bot.vx *= -0.5; }
+    if (bot.x - bot.r < halfX - 60) { bot.x = halfX - 60 + bot.r; bot.vx *= -0.5; }
+    if (bot.y - bot.r < pitch.y) { bot.y = pitch.y + bot.r; bot.vy *= -0.5; }
+    if (bot.y + bot.r > pitch.y + pitch.h) { bot.y = pitch.y + pitch.h - bot.r; bot.vy *= -0.5; }
+
+    // Bot kick attempt toward Red's goal (Left)
+    const bdx = ball.x - bot.x;
+    const bdy = ball.y - bot.y;
+    const bDist = Math.hypot(bdx, bdy) || 1;
+    if (bDist <= bot.r + ball.r + 7 && bot.kickCooldown <= 0) {
+      bot.kicking = true;
+      bot.kickCooldown = 22;
+      playSound('kick');
+      // Kick toward Red goal: target left net center
+      const gx = pitch.x - 20 - ball.x;
+      const gy = halfY - ball.y;
+      const gDist = Math.hypot(gx, gy) || 1;
+      ball.vx += (gx / gDist) * 9.8;
+      ball.vy += (gy / gDist) * 9.8;
+    }
+
+    if (bot.kickCooldown > 0) {
+      bot.kickCooldown--;
+      if (bot.kickCooldown < 15) bot.kicking = false;
+    }
+  }
 
   function updatePhysics() {
-    // Player movement acceleration
+    if (state.matchPaused) return;
+
+    // Player acceleration
     let ax = 0;
     let ay = 0;
     if (keys.left) ax -= player.speed;
@@ -517,104 +1042,134 @@ export function initClientSimulator(container) {
     player.vx *= 0.92;
     player.vy *= 0.92;
 
-    // Kick cooldown animation
     if (player.kickCooldown > 0) {
       player.kickCooldown--;
-      if (player.kickCooldown < 12) player.kicking = false;
+      if (player.kickCooldown < 10) player.kicking = false;
     }
 
-    // Ball physics
+    updateBotAI();
+
+    // Ball movement & friction
     ball.x += ball.vx;
     ball.y += ball.vy;
     ball.vx *= 0.985;
     ball.vy *= 0.985;
 
     // Ball trail
-    if (Math.hypot(ball.vx, ball.vy) > 0.8) {
-      ball.trail.push({ x: ball.x, y: ball.y, alpha: 0.6 });
-      if (ball.trail.length > 12) ball.trail.shift();
+    if (Math.hypot(ball.vx, ball.vy) > 0.9) {
+      ball.trail.push({ x: ball.x, y: ball.y, alpha: 0.65 });
+      if (ball.trail.length > 14) ball.trail.shift();
     } else if (ball.trail.length) {
       ball.trail.shift();
     }
     ball.trail.forEach(t => t.alpha *= 0.88);
 
-    // Arena boundary collisions (Player)
+    // Player pitch bounds
     if (player.x - player.r < pitch.x) { player.x = pitch.x + player.r; player.vx *= -0.5; }
     if (player.x + player.r > pitch.x + pitch.w) { player.x = pitch.x + pitch.w - player.r; player.vx *= -0.5; }
     if (player.y - player.r < pitch.y) { player.y = pitch.y + player.r; player.vy *= -0.5; }
     if (player.y + player.r > pitch.y + pitch.h) { player.y = pitch.y + pitch.h - player.r; player.vy *= -0.5; }
 
-    // Ball boundary collisions & Goals
+    // Ball wall bounces & Goal checks
     // Top & Bottom walls
     if (ball.y - ball.r < pitch.y) {
       ball.y = pitch.y + ball.r;
       ball.vy *= -0.88;
+      playSound('bounce');
     }
     if (ball.y + ball.r > pitch.y + pitch.h) {
       ball.y = pitch.y + pitch.h - ball.r;
       ball.vy *= -0.88;
+      playSound('bounce');
     }
 
-    // Left wall or goal
+    // Left Goal (Red's net)
     if (ball.x - ball.r < pitch.x) {
       if (ball.y > goalTop && ball.y < goalBottom) {
-        // Own goal / bounce
-        ball.x = pitch.x + ball.r;
-        ball.vx *= -0.85;
+        if (ball.x - ball.r < pitch.x - pitch.goalDepth + 5) {
+          // Blue scores in Left Net!
+          resetPitch(true, 'BLUE');
+        }
       } else {
         ball.x = pitch.x + ball.r;
         ball.vx *= -0.88;
+        playSound('bounce');
       }
     }
 
-    // Right wall or goal (Target goal!)
+    // Right Goal (Blue's net - Target Goal for Red!)
     if (ball.x + ball.r > pitch.x + pitch.w) {
       if (ball.y > goalTop && ball.y < goalBottom) {
-        // GOAL SCORED!
-        resetBall(true);
+        if (ball.x + ball.r > pitch.x + pitch.w + pitch.goalDepth - 5) {
+          // Red scores in Right Net!
+          resetPitch(true, 'RED');
+        }
       } else {
         ball.x = pitch.x + pitch.w - ball.r;
         ball.vx *= -0.88;
+        playSound('bounce');
       }
     }
 
-    // Player-Ball circle collision
-    const colDist = Math.hypot(ball.x - player.x, ball.y - player.y);
-    const minDist = player.r + ball.r;
-    if (colDist < minDist) {
-      const overlap = minDist - colDist;
-      const nx = (ball.x - player.x) / (colDist || 1);
-      const ny = (ball.y - player.y) / (colDist || 1);
-      ball.x += nx * overlap;
-      ball.y += ny * overlap;
-      ball.vx += nx * 2.8 + player.vx * 0.5;
-      ball.vy += ny * 2.8 + player.vy * 0.5;
+    // Player - Ball circle collision
+    resolveCircleCollision(player, ball, 3.2);
+
+    // Bot - Ball circle collision
+    resolveCircleCollision(bot, ball, 2.9);
+
+    // Player - Bot disc collision
+    const pDist = Math.hypot(bot.x - player.x, bot.y - player.y);
+    const pMin = player.r + bot.r;
+    if (pDist < pMin) {
+      const pOver = pMin - pDist;
+      const nx = (bot.x - player.x) / (pDist || 1);
+      const ny = (bot.y - player.y) / (pDist || 1);
+      player.x -= nx * pOver * 0.5;
+      player.y -= ny * pOver * 0.5;
+      bot.x += nx * pOver * 0.5;
+      bot.y += ny * pOver * 0.5;
     }
   }
 
-  function renderArena() {
-    // Turf: Dark Obsidian Carbon Field
-    ctx.fillStyle = '#0f1724';
+  function resolveCircleCollision(c1, c2, force) {
+    const dist = Math.hypot(c2.x - c1.x, c2.y - c1.y);
+    const minD = c1.r + c2.r;
+    if (dist < minD) {
+      const overlap = minD - dist;
+      const nx = (c2.x - c1.x) / (dist || 1);
+      const ny = (c2.y - c1.y) / (dist || 1);
+      c2.x += nx * overlap;
+      c2.y += ny * overlap;
+      c2.vx += nx * force + c1.vx * 0.45;
+      c2.vy += ny * force + c1.vy * 0.45;
+      playSound('bounce');
+    }
+  }
+
+  /* ═══════════════════════════════════════════════
+     AUTHENTIC HAXBALL STADIUM GRAPHICS RENDERING
+     ═══════════════════════════════════════════════ */
+  function renderPitch() {
+    // Outer Border Stadium Background (Dark Grass)
+    ctx.fillStyle = '#5c7844';
     ctx.fillRect(0, 0, W, H);
 
-    // Custom AtomHax Pitch Ground
-    ctx.fillStyle = '#141d2e';
-    ctx.beginPath();
-    ctx.roundRect(pitch.x, pitch.y, pitch.w, pitch.h, 20);
-    ctx.fill();
+    // Pitch Ground Turf
+    ctx.fillStyle = '#718c5a';
+    ctx.fillRect(pitch.x, pitch.y, pitch.w, pitch.h);
 
-    // Subtle turf pitch stripes
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.015)';
-    for (let x = pitch.x; x < pitch.x + pitch.w; x += 50) {
-      ctx.fillRect(x, pitch.y, 25, pitch.h);
+    // Authentic Mowing Stripes (Vertical alternating greens)
+    ctx.fillStyle = '#7a9763';
+    const stripeW = 42;
+    for (let x = pitch.x; x < pitch.x + pitch.w; x += stripeW * 2) {
+      const w = Math.min(stripeW, pitch.x + pitch.w - x);
+      ctx.fillRect(x, pitch.y, w, pitch.h);
     }
 
-    // Pitch borders (AtomHax electric cyan)
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.roundRect(pitch.x, pitch.y, pitch.w, pitch.h, 20);
-    ctx.stroke();
+    // Outer Pitch Boundary Lines (Crisp White)
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.4;
+    ctx.strokeRect(pitch.x, pitch.y, pitch.w, pitch.h);
 
     // Midfield Line
     ctx.beginPath();
@@ -622,49 +1177,85 @@ export function initClientSimulator(container) {
     ctx.lineTo(halfX, pitch.y + pitch.h);
     ctx.stroke();
 
-    // Midfield Center Circle & Dot
+    // Center Circle & Center Spot
     ctx.beginPath();
-    ctx.arc(halfX, halfY, 55, 0, Math.PI * 2);
+    ctx.arc(halfX, halfY, 62, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(halfX, halfY, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Center Turf Watermark Branding
-    ctx.save();
-    ctx.font = '600 13px Inter, sans-serif';
-    ctx.fillStyle = 'rgba(186, 230, 253, 0.18)';
-    ctx.textAlign = 'center';
-    ctx.fillText('ATOMHAX SOLO ARENA', halfX, halfY - 65);
-    ctx.restore();
+    // Penalty Boxes
+    // Left Box (Red Area)
+    ctx.strokeRect(pitch.x, halfY - 65, 60, 130);
+    // Right Box (Blue Area)
+    ctx.strokeRect(pitch.x + pitch.w - 60, halfY - 65, 60, 130);
 
-    // Left Goal (Practice Net)
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
-    ctx.strokeRect(pitch.x - 22, goalTop, 22, pitch.goalH);
-    ctx.fillStyle = 'rgba(30, 60, 90, 0.3)';
-    ctx.fillRect(pitch.x - 22, goalTop, 22, pitch.goalH);
+    // Penalty spots
+    ctx.beginPath();
+    ctx.arc(pitch.x + 45, halfY, 2.5, 0, Math.PI * 2);
+    ctx.arc(pitch.x + pitch.w - 45, halfY, 2.5, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Right Goal (Target Net)
-    ctx.strokeStyle = '#38bdf8';
-    ctx.strokeRect(pitch.x + pitch.w, goalTop, 22, pitch.goalH);
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
-    ctx.fillRect(pitch.x + pitch.w, goalTop, 22, pitch.goalH);
+    // Goal Nets
+    // Left Goal (Red)
+    ctx.strokeStyle = '#e56e56';
+    ctx.strokeRect(pitch.x - pitch.goalDepth, goalTop, pitch.goalDepth, pitch.goalH);
+    ctx.fillStyle = 'rgba(229, 110, 86, 0.22)';
+    ctx.fillRect(pitch.x - pitch.goalDepth, goalTop, pitch.goalDepth, pitch.goalH);
+
+    // Right Goal (Blue)
+    ctx.strokeStyle = '#5689e5';
+    ctx.strokeRect(pitch.x + pitch.w, goalTop, pitch.goalDepth, pitch.goalH);
+    ctx.fillStyle = 'rgba(86, 137, 229, 0.22)';
+    ctx.fillRect(pitch.x + pitch.w, goalTop, pitch.goalDepth, pitch.goalH);
+
+    // Goal Post Stanchions (White crossbar circles)
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(pitch.x, goalTop, 4, 0, Math.PI * 2);
+    ctx.arc(pitch.x, goalBottom, 4, 0, Math.PI * 2);
+    ctx.arc(pitch.x + pitch.w, goalTop, 4, 0, Math.PI * 2);
+    ctx.arc(pitch.x + pitch.w, goalBottom, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Userscript: BlockHelper Dynamic Trajectory Guidelines
+    if (state.scripts.blockHelper) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+
+      // Vector from ball to player
+      ctx.beginPath();
+      ctx.moveTo(ball.x, ball.y);
+      ctx.lineTo(player.x, player.y);
+      ctx.stroke();
+
+      // Vector from ball to right target goal center
+      ctx.strokeStyle = 'rgba(74, 222, 128, 0.65)';
+      ctx.beginPath();
+      ctx.moveTo(ball.x, ball.y);
+      ctx.lineTo(pitch.x + pitch.w + 10, halfY);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // Ball Trail
     ball.trail.forEach((t) => {
-      ctx.fillStyle = `rgba(186, 230, 253, ${t.alpha * 0.4})`;
+      ctx.fillStyle = `rgba(255, 255, 255, ${t.alpha * 0.45})`;
       ctx.beginPath();
-      ctx.arc(t.x, t.y, ball.r * 0.75, 0, Math.PI * 2);
+      ctx.arc(t.x, t.y, ball.r * 0.8, 0, Math.PI * 2);
       ctx.fill();
     });
 
-    // Ball
+    // Match Ball (Authentic Black & White Soccer Ball)
     ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
     ctx.shadowBlur = 6;
-    ctx.shadowOffsetY = 3;
+    ctx.shadowOffsetY = 2;
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
@@ -673,74 +1264,88 @@ export function initClientSimulator(container) {
     ctx.strokeStyle = '#1e293b';
     ctx.stroke();
 
-    ctx.fillStyle = '#38bdf8';
+    // Ball inner pentagon
+    ctx.fillStyle = '#1e293b';
     ctx.beginPath();
-    ctx.arc(ball.x, ball.y, 2.5, 0, Math.PI * 2);
+    ctx.arc(ball.x, ball.y, 3.2, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    // Player Kick Aura Halo
-    if (player.kicking) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.arc(player.x, player.y, player.r + 7, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+    // Blue Opponent Disc (SparringBot)
+    renderPlayerDisc(bot, '#5689e5', '2', 'SparringBot');
 
-    // Player Disc (Atom Red / Chrome Pip)
-    ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 3;
-    ctx.fillStyle = '#e24a4a';
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
+    // Red Player Disc (You)
+    renderPlayerDisc(player, '#e56e56', '1', state.nick);
 
-    // Inner Pip
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Nickname above player disc
-    ctx.font = '500 11px Inter, sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 4;
-    ctx.fillText(state.nick, player.x, player.y - player.r - 6);
-    ctx.restore();
-
-    // Goal scored banner overlay
-    if (goalFlash > 0) {
-      goalFlash--;
-      const alpha = Math.min(1, goalFlash / 15);
+    // Goal Scored Celebration Banner
+    if (goalOverlay > 0) {
+      goalOverlay--;
+      const alpha = Math.min(1, goalOverlay / 18);
       ctx.save();
-      ctx.fillStyle = `rgba(15, 23, 42, ${alpha * 0.85})`;
-      ctx.roundRect(halfX - 100, halfY - 32, 200, 64, 12);
-      ctx.fill();
-      ctx.strokeStyle = `rgba(56, 189, 248, ${alpha})`;
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      ctx.fillStyle = `rgba(18, 25, 36, ${alpha * 0.9})`;
+      ctx.fillRect(halfX - 120, halfY - 36, 240, 72);
+      ctx.strokeStyle = goalScorer === 'RED' ? '#e56e56' : '#5689e5';
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(halfX - 120, halfY - 36, 240, 72);
 
-      ctx.font = '700 24px Inter, sans-serif';
-      ctx.fillStyle = `rgba(56, 189, 248, ${alpha})`;
+      ctx.font = '900 28px Arial Black, sans-serif';
+      ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      ctx.fillText('GOAL!', halfX, halfY + 2);
-      ctx.font = '500 10px Inter, sans-serif';
-      ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
-      ctx.fillText('PRACTICE SHOT CONVERTED', halfX, halfY + 18);
+      ctx.fillText('GOAL!', halfX, halfY + 4);
+
+      ctx.font = '700 11px Inter, sans-serif';
+      ctx.fillStyle = goalScorer === 'RED' ? '#e56e56' : '#5689e5';
+      ctx.fillText(goalScorer === 'RED' ? `${state.nick} SCORED` : 'SPARRING BOT SCORED', halfX, halfY + 22);
       ctx.restore();
     }
   }
 
+  function renderPlayerDisc(p, color, num, name) {
+    ctx.save();
+    // Kick aura pulse
+    if (p.kicking) {
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r + 8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Disc body
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = 2.4;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
+
+    // Player Number
+    ctx.font = '700 12px Inter, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(num, p.x, p.y + 0.5);
+
+    // Name tag above disc
+    ctx.font = '600 11px Inter, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 4;
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(name, p.x, p.y - p.r - 4);
+    ctx.restore();
+  }
+
+  let lastTick = performance.now();
+  let frameCount = 0;
+  let fpsTimer = performance.now();
+
   function loop(now) {
-    if (!gameRunning) return;
+    if (!matchRunning) return;
 
     frameCount++;
     if (now - fpsTimer >= 1000) {
@@ -751,23 +1356,36 @@ export function initClientSimulator(container) {
     }
 
     updatePhysics();
-    renderArena();
+    renderPitch();
 
     animId = requestAnimationFrame(loop);
   }
 
-  function startArenaGame() {
-    gameRunning = true;
-    lastFrameTime = performance.now();
+  function startMatch() {
+    matchRunning = true;
+    lastTick = performance.now();
     fpsTimer = performance.now();
+    frameCount = 0;
+
+    if (matchClockTimer) clearInterval(matchClockTimer);
+    matchClockTimer = setInterval(() => {
+      if (!state.matchPaused && matchRunning) {
+        state.matchSeconds++;
+        const mins = String(Math.floor(state.matchSeconds / 60)).padStart(2, '0');
+        const secs = String(state.matchSeconds % 60).padStart(2, '0');
+        clockEl.textContent = `${mins}:${secs}`;
+      }
+    }, 1000);
+
     animId = requestAnimationFrame(loop);
   }
 
-  function stopArenaGame() {
-    gameRunning = false;
+  function stopMatch() {
+    matchRunning = false;
     if (animId) cancelAnimationFrame(animId);
+    if (matchClockTimer) clearInterval(matchClockTimer);
   }
 
-  // Initial mount
+  // Initial mount: start firmly in nickname view with zero scrolling
   switchView('nick');
 }

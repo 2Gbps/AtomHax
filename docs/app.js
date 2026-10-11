@@ -1,4 +1,9 @@
-import { animate, createTimeline } from 'animejs';
+if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+if (!window.location.hash || window.location.hash === '#hero') {
+  window.scrollTo(0, 0);
+}
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
