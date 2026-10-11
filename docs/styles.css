@@ -1129,6 +1129,79 @@ input[type="submit"],
   color: #94a3b8;
 }
 
+/* In-Game BlockHelper & OP Mode HUD (blockhelper.ts) */
+.sim-blockhelper-hud {
+  position: absolute;
+  top: 44px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-end;
+  pointer-events: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  z-index: 30;
+}
+.sim-bh-pill {
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(15, 23, 36, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.sim-bh-pill.active {
+  border-color: #38bdf8;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.18);
+}
+.sim-bh-pill.op {
+  border-color: #f59e0b;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.18);
+}
+
+/* Favorite Rooms UI (favrooms.ts) */
+.sim-fav-btn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #121a22;
+  border: 1px solid #2b3e50;
+  color: #f59e0b;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+.sim-fav-btn:hover {
+  background: #1e2c3a;
+  border-color: #4a75a0;
+}
+.sim-fav-btn.active {
+  background: #244967;
+  color: #ffffff;
+  border-color: #38bdf8;
+}
+
+.sim-room-fav-icon {
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.25);
+  margin-right: 6px;
+  font-size: 11px;
+  transition: color 0.15s ease;
+}
+.sim-room-fav-icon:hover, .sim-room-fav-icon.is-fav {
+  color: #f59e0b;
+}
+
 .practice-cta-group {
   margin-top: 18px;
 }
