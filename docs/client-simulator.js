@@ -57,6 +57,23 @@ const GAMEFRAME_GLASS_CSS = `
     border-radius: 12px !important;
     box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.1) !important;
   }
+  .choose-nickname-view > img {
+    margin-bottom: 22px !important;
+    filter: drop-shadow(0 6px 14px rgba(0,0,0,0.5)) !important;
+  }
+  .choose-nickname-view .dialog {
+    width: 340px !important;
+    padding: 24px 28px !important;
+  }
+  .choose-nickname-view .dialog .label-input {
+    margin-bottom: 18px !important;
+  }
+  .choose-nickname-view .dialog .label-input > label {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: rgba(255,255,255,0.75) !important;
+    margin-bottom: 6px !important;
+  }
   .game-state-view .bar, .chatbox-view-contents,
   .game-view.chat-bg-full .bottom-section, .game-view>.buttons,
   .sound-button-container .sound-slider, .stats-view, .replay-controls-view {
