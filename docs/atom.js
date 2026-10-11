@@ -22,8 +22,12 @@ if (canvas) {
   renderer.toneMappingExposure = 1.12;
 
   const scene = new THREE.Scene();
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  } catch (e) {
+    console.warn('[atom] RoomEnvironment fallback to direct lights');
+  }
 
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 120);
   camera.position.set(0, 0.55, 8.6);
@@ -435,8 +439,7 @@ if (canvas) {
 
   window.__atomReady = true;
   } catch (error) {
-    document.body.classList.add('atom-failed');
-    console.error('AtomHax 3D field failed to start:', error);
+    console.error('AtomHax 3D field initialization warning:', error);
   }
 }
 
