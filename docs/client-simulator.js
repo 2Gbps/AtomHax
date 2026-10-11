@@ -78,7 +78,7 @@ const GAMEFRAME_GLASS_CSS = `
     background: rgba(17,22,25,0.55) !important;
     border-radius: 8px !important;
   }
-  .dialog>h1, .room-view>.container>h1 { border-bottom-color: rgba(255,255,255,0.12) !important; }
+  .dialog>h1, .room-view>.container>h1 { border-bottom: 2.5px solid #e14949 !important; padding-bottom: 6px !important; }
   .dialog button, .room-view>.container button {
     background: linear-gradient(135deg, rgba(36,73,103,0.85) 0%, rgba(36,73,103,0.65) 100%) !important;
     border: 1px solid rgba(255,255,255,0.1) !important;
@@ -204,10 +204,16 @@ export function initClientSimulator(container) {
       }
     },
     windowMaximizeToggle: () => {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
+      const target = container.closest('.client-window-frame') || container;
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
       } else {
-        container.requestFullscreen().catch(() => {});
+        if (target.requestFullscreen) {
+          target.requestFullscreen().catch(() => {});
+        } else if (target.webkitRequestFullscreen) {
+          target.webkitRequestFullscreen();
+        }
       }
     },
     windowClose: () => {
@@ -229,12 +235,17 @@ export function initClientSimulator(container) {
         <div class="sim-traffic-lights" style="display:flex; gap:7px; align-items:center;">
           <span class="sim-light red" id="atom-traffic-close" title="Reset Frame" style="width:11px; height:11px; border-radius:50%; background:#ff5f57; cursor:pointer;"></span>
           <span class="sim-light yellow" id="atom-traffic-min" title="Collapse Window" style="width:11px; height:11px; border-radius:50%; background:#febc2e; cursor:pointer;"></span>
-          <span class="sim-light green" id="atom-traffic-max" title="Fullscreen Toggle" style="width:11px; height:11px; border-radius:50%; background:#28c840; cursor:pointer;"></span>
+          <span class="sim-light green" id="atom-traffic-max" title="Toggle Fullscreen" style="width:11px; height:11px; border-radius:50%; background:#28c840; cursor:pointer;"></span>
         </div>
-        <div class="sim-title" style="font-size:12px; font-weight:600; color:rgba(255,255,255,0.85); letter-spacing:-0.01em;">
-          AtomHax v0.5.4 &mdash; Native Web Presentation
+        <div class="sim-title" style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:rgba(255,255,255,0.85); letter-spacing:-0.01em;">
+          <img src="assets/atomhax-mark.png" alt="AtomHax" style="width:16px; height:16px; border-radius:3px; object-fit:contain; display:inline-block;">
+          <span>AtomHax v0.5.4 &mdash; Native Web Presentation</span>
         </div>
         <div class="sim-header-meta" style="display:flex; align-items:center; gap:8px;">
+          <button class="sim-fullscreen-btn" id="atom-fullscreen-btn" title="Toggle 16:9 Fullscreen">
+            <i class="fa fa-arrows-alt"></i>
+            <span>Fullscreen</span>
+          </button>
           <span class="sim-fps-badge" id="client-raf-fps" style="font-size:11px; font-family:monospace; padding:2px 8px; border-radius:12px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#6fe88a;">
             60 FPS
           </span>
@@ -243,7 +254,7 @@ export function initClientSimulator(container) {
       </div>
 
       <!-- Game Viewport Frame -->
-      <div class="client-game-viewport" style="position:relative; width:100%; height:560px; background:#000; overflow:hidden;">
+      <div class="client-game-viewport" style="position:relative; width:100%; background:#000; overflow:hidden;">
         <!-- Invisible hover zone to reveal sidebar -->
         <div id="nyx-sidebar-hover" style="position:absolute; top:0; left:0; width:80px; height:100%; z-index:20; cursor:pointer;"></div>
         
@@ -258,6 +269,9 @@ export function initClientSimulator(container) {
 
           <!-- Actions -->
           <div style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-top:8px;">
+            <div id="sb-action-practice" title="Practice Pitch" style="width:46px; height:46px; border-radius:10px; ${GLASS_STYLE} display:flex; align-items:center; justify-content:center; cursor:pointer; color:rgba(255,255,255,0.75); font-size:20px; transition:color 0.15s ease, transform 0.15s ease;">
+              <i class="fa fa-futbol-o"></i>
+            </div>
             <div id="sb-action-join" title="Join Room" style="width:46px; height:46px; border-radius:10px; ${GLASS_STYLE} display:flex; align-items:center; justify-content:center; cursor:pointer; color:rgba(255,255,255,0.75); font-size:20px; transition:color 0.15s ease, transform 0.15s ease;">
               <i class="fa fa-sign-in"></i>
             </div>
@@ -390,6 +404,36 @@ export function initClientSimulator(container) {
 
   const toggleMax = () => window.electronAPI.windowMaximizeToggle();
   container.querySelector('#atom-traffic-max').addEventListener('click', toggleMax);
+
+  const fsBtn = container.querySelector('#atom-fullscreen-btn');
+  if (fsBtn) {
+    fsBtn.addEventListener('click', toggleMax);
+  }
+
+  const updateFullscreenUi = () => {
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (fsBtn) {
+      fsBtn.innerHTML = isFs ? '<i class="fa fa-compress"></i> <span>Windowed</span>' : '<i class="fa fa-arrows-alt"></i> <span>Fullscreen</span>';
+    }
+  };
+  document.addEventListener('fullscreenchange', updateFullscreenUi);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenUi);
+
+  const practiceBtn = container.querySelector('#sb-action-practice');
+  if (practiceBtn) {
+    practiceBtn.addEventListener('click', () => {
+      hideSidebar();
+      try {
+        if (frame && frame.contentWindow && frame.contentWindow.B && frame.contentWindow.B.Wo) {
+          frame.contentWindow.B.Wo();
+        } else if (frame) {
+          frame.src = 'game/game.html';
+        }
+      } catch (_) {
+        if (frame) frame.src = 'game/game.html';
+      }
+    });
+  }
 
   // ── Join Room Modal ──
   const openJoinRoom = () => {

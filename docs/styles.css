@@ -446,7 +446,8 @@ input[type="submit"],
 }
 
 .practice-layout {
-  max-width: 640px;
+  max-width: 1040px;
+  width: 100%;
   margin-right: auto;
   margin-left: 0;
 }
@@ -460,6 +461,55 @@ input[type="submit"],
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+  width: 100%;
+  transition: all 0.25s ease;
+}
+
+.client-window-frame:fullscreen,
+.client-window-frame:-webkit-full-screen {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  z-index: 999999 !important;
+}
+
+.client-window-frame:fullscreen .client-game-viewport,
+.client-window-frame:-webkit-full-screen .client-game-viewport {
+  height: calc(100vh - 40px) !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+}
+
+.client-game-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 75vh;
+  min-height: 440px;
+  background: #000;
+  overflow: hidden;
+}
+
+.sim-fullscreen-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.sim-fullscreen-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
 }
 
 .sim-shell {

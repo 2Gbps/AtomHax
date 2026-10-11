@@ -1,0 +1,43 @@
+{
+	"manifest_version": 3,
+	"name": "Haxball All-in-one Tool",
+	"version": "0.5.1",
+	"author": "xenon",
+	"description": "Room search, auto join, local mute, camera views, and link formatting for HaxBall",
+	"content_scripts": [
+		{
+			"matches": [
+				"https://*.haxball.com/play*"
+			],
+			"css": [
+				"css/filter_button.css"
+			],
+			"js": [
+				"js/content_utility/search_bar.js",
+				"js/content_utility/auto_join.js",
+				"js/content.js"
+			],
+			"run_at": "document_idle"
+		}
+	],
+	"action": {
+		"default_icon": "icons/icon.png"
+	},
+	"icons": {
+		"48": "icons/icon.png"
+	},
+	"permissions": [
+		"storage"
+	],
+	"web_accessible_resources": [
+		{
+			"resources": [
+				"lib/elements.flagmeister.min.js",
+				"flags/*"
+			],
+			"matches": [
+				"https://*.haxball.com/*"
+			]
+		}
+	]
+}
