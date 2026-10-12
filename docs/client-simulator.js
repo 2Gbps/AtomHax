@@ -282,7 +282,7 @@ export function initClientSimulator(container) {
 
           <!-- Actions -->
           <div style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-top:8px;">
-            <div id="sb-action-practice" title="Practice Pitch" style="width:46px; height:46px; border-radius:10px; ${GLASS_STYLE} display:flex; align-items:center; justify-content:center; cursor:pointer; color:rgba(255,255,255,0.75); font-size:20px; transition:color 0.15s ease, transform 0.15s ease;">
+            <div id="sb-action-practice" title="Change Username" style="width:46px; height:46px; border-radius:10px; ${GLASS_STYLE} display:flex; align-items:center; justify-content:center; cursor:pointer; color:rgba(255,255,255,0.75); font-size:20px; transition:color 0.15s ease, transform 0.15s ease;">
               <i class="fa fa-futbol-o"></i>
             </div>
             <div id="sb-action-join" title="Join Room" style="width:46px; height:46px; border-radius:10px; ${GLASS_STYLE} display:flex; align-items:center; justify-content:center; cursor:pointer; color:rgba(255,255,255,0.75); font-size:20px; transition:color 0.15s ease, transform 0.15s ease;">
