@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#060a12">
+  <meta name="description" content="Technical reference for AtomHax: client extensibility, match telemetry, event subscriptions, and integration patterns.">
+  <title>AtomHax &mdash; Client Extensibility & API Reference</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "animejs": "https://cdn.jsdelivr.net/npm/animejs@4.5.0/dist/modules/index.js",
+      "animejs/adapters/three": "https://cdn.jsdelivr.net/npm/animejs@4.5.0/dist/modules/adapters/three/index.js",
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="atom-canvas" aria-hidden="true"></canvas>
+
+  <!-- Navigation Brand Pill -->
+  <a class="nav-brand" href="index.html">
+    <img class="nav-brand-logo" src="assets/atomhax-mark.png" alt="AtomHax" width="16" height="16">
+    <span>AtomHax</span>
+  </a>
+
+  <!-- Floating macOS Dock Navigation -->
+  <nav class="nav">
+    <div class="dock">
+      <a class="dock-item" href="index.html">Overview</a>
+      <a class="dock-item" href="index.html#features">Features</a>
+      <a class="dock-item" href="index.html#practice">Demo</a>
+      <a class="dock-item" href="index.html#download">Download</a>
+      <a class="dock-item is-active" href="api.html">API Docs</a>
+    </div>
+  </nav>
+
+  <main class="docs-page-container">
+    <header class="docs-hero">
+      <div class="tag-badge">
+        <span class="badge-chrome">Client Extensibility</span>
+        <span>AtomHax v0.5.4 API</span>
+      </div>
+      <h1 class="docs-hero-title">Client Scripting &amp; Extensibility API</h1>
+      <p class="docs-hero-sub">The complete technical specification for creating client extensions, custom HUD telemetry overlays, tournament referee automation, and Discord Rich Presence integrations in AtomHax.</p>
+    </header>
+
+    <div class="docs-layout">
+      <!-- Sticky Sidebar Table of Contents -->
+      <aside class="docs-sidebar">
+        <div class="docs-sidebar-title">Documentation</div>
+        <nav class="docs-toc" id="docs-toc">
+          <a class="docs-toc-link is-active" href="#overview">Overview</a>
+          <a class="docs-toc-link" href="#anatomy">Script Anatomy</a>
+          <a class="docs-toc-link" href="#contexts">Execution Contexts</a>
+          <a class="docs-toc-link" href="#electron-api">Desktop Client API</a>
+          <a class="docs-toc-link" href="#telemetry-state">Match Telemetry State</a>
+          <a class="docs-toc-link" href="#events">Event Subscriptions</a>
+          <a class="docs-toc-link" href="#administration">Room Administration</a>
+          <a class="docs-toc-link" href="#examples">Production Examples</a>
+          <a class="docs-toc-link" href="#best-practices">Lifecycle &amp; Safety</a>
+        </nav>
+      </aside>
+
+      <!-- Main Documentation Content -->
+      <article class="docs-content">
+        <!-- 1. Overview -->
+        <section class="docs-section" id="overview">
+          <div class="docs-section-badge">Architecture &middot; Core</div>
+          <h2 class="docs-h2">Overview</h2>
+          <p class="docs-text">
+            AtomHax includes a native client extensibility pipeline that executes standard JavaScript files directly inside the client runtime. Scripts run locally in your dedicated session with zero external latency and direct access to game telemetry and client lifecycle events.
+          </p>
+          <p class="docs-text">
+            The client extension ecosystem is engineered for tournament referees, league statistics tracking, custom head-up displays (HUD), macro assistants, and Discord Rich Presence broadcasters without altering game physics or server trust boundaries.
+          </p>
+          <div class="docs-callout note">
+            <strong>Local Execution Sandbox:</strong> Extensions execute client-side with native permissions in your client environment. Scripts operate on standard Web APIs and the secure Electron preload bridge.
+          </div>
+        </section>
+
+        <!-- 2. Script Anatomy -->
+        <section class="docs-section" id="anatomy">
+          <div class="docs-section-badge">Specification &middot; File Format</div>
+          <h2 class="docs-h2">Script Anatomy &amp; Metadata</h2>
+          <p class="docs-text">
+            Every extension is a clean <code>.js</code> file containing an optional userscript header block. The AtomHax Script Manager inspects this header to display the extension name, version, and execution target inside the client sidebar.
+          </p>
+          <div class="docs-codeblock">
+            <div class="docs-cb-head">
+              <span>extension-header.js</span>
+              <button class="docs-cb-copy">Copy</button>
+            </div>
+            <pre><span class="c-com">// ==UserScript==</span>
+<span class="c-com">// @name         Match Telemetry HUD</span>
+<span class="c-com">// @version      1.2.0</span>
+<span class="c-com">// @description  Renders live ball velocity and match clock on a glass canvas badge.</span>
+<span class="c-com">// @noframes     false</span>
+<span class="c-com">// ==/UserScript==</span>
+
+(<span class="c-kw">function</span> () {
+  <span class="c-str">'use strict'</span>;
+
+  <span class="c-com">// Single-initialization guard</span>
+  <span class="c-kw">if</span> (window.__telemetryHudLoaded) <span class="c-kw">return</span>;
+  window.__telemetryHudLoaded = <span class="c-kw">true</span>;
+
+  <span class="c-com">// Extension logic executes here</span>
+})();</pre>
+          </div>
+
+          <div class="docs-table-wrap">
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Header Directive</th>
+                  <th>Type</th>
+                  <th>Behavior &amp; Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>@name</code></td>
+                  <td><code>string</code></td>
+                  <td>Display name presented in the client settings and scripts manager drawer.</td>
+                </tr>
+                <tr>
+                  <td><code>@version</code></td>
+                  <td><code>string</code></td>
+                  <td>Semantic version string for extension tracking and updates.</td>
+                </tr>
+                <tr>
+                  <td><code>@description</code></td>
+                  <td><code>string</code></td>
+                  <td>Brief description of the extension capabilities.</td>
+                </tr>
+                <tr>
+                  <td><code>@noframes</code></td>
+                  <td><code>boolean</code></td>
+                  <td>When <code>true</code>, executes in the top-level Electron renderer shell. When omitted or <code>false</code>, executes inside the game frame with direct canvas access.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 3. Execution Contexts -->
+        <section class="docs-section" id="contexts">
+          <div class="docs-section-badge">Runtime &middot; Environment</div>
+          <h2 class="docs-h2">Execution Contexts</h2>
+          <p class="docs-text">
+            AtomHax provides two distinct runtime environments depending on what the extension manages:
+          </p>
+          <div class="docs-table-wrap">
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Context Target</th>
+                  <th>Document Target</th>
+                  <th>Accessible APIs</th>
+                  <th>Primary Use Cases</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Gameframe (Default)</strong></td>
+                  <td><code>game/game.html</code> iframe</td>
+                  <td><code>window.__hb</code>, Game DOM, Canvas, In-game Chat, Room View</td>
+                  <td>HUD overlays, match stat monitors, custom UI widgets, referee bots</td>
+                </tr>
+                <tr>
+                  <td><strong>Top Shell (<code>@noframes true</code>)</strong></td>
+                  <td>Main Electron window</td>
+                  <td><code>window.electronAPI</code>, App Window Shell, Sidebar Controls</td>
+                  <td>Window chrome widgets, sound mixers, external integrations</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 4. Desktop Client API -->
+        <section class="docs-section" id="electron-api">
+          <div class="docs-section-badge">Client API &middot; Preload Bridge</div>
+          <h2 class="docs-h2">Desktop Client API &middot; <code>window.electronAPI</code></h2>
+          <p class="docs-text">
+            The desktop client exposes a secure IPC bridge on <code>window.electronAPI</code>. This bridge allows extensions to inspect and persist preferences, trigger Discord RPC updates, generate cryptographic player identifiers, and manage extension files.
+          </p>
+          <div class="docs-table-wrap">
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Method Signature</th>
+                  <th>Return Type</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>getAppPreferences()</code></td>
+                  <td><code>Promise&lt;AppPreferences&gt;</code></td>
+                  <td>Returns stored client configurations (FPS uncap, render scaling, shortcuts, discord RPC).</td>
+                </tr>
+                <tr>
+                  <td><code>setAppPreference(key, value)</code></td>
+                  <td><code>Promise&lt;boolean&gt;</code></td>
+                  <td>Persists a specific user preference key in <code>preferences.json</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>updateDiscordRPC(details)</code></td>
+                  <td><code>void</code></td>
+                  <td>Updates the client Discord Rich Presence status string in real time.</td>
+                </tr>
+                <tr>
+                  <td><code>generatePlayerAuthKey()</code></td>
+                  <td><code>Promise&lt;string&gt;</code></td>
+                  <td>Generates or retrieves the ECDSA P-256 cryptographic auth key identifying your player profile.</td>
+                </tr>
+                <tr>
+                  <td><code>exportPreferencesFile()</code></td>
+                  <td><code>Promise&lt;{success: boolean}&gt;</code></td>
+                  <td>Exports application configuration backup to disk.</td>
+                </tr>
+                <tr>
+                  <td><code>importPreferencesFile()</code></td>
+                  <td><code>Promise&lt;{success: boolean}&gt;</code></td>
+                  <td>Opens file dialogue to restore saved preferences.</td>
+                </tr>
+                <tr>
+                  <td><code>scriptsList()</code></td>
+                  <td><code>Promise&lt;NyxScript[]&gt;</code></td>
+                  <td>Returns array of installed scripts with <code>{id, name, content, enabled}</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>scriptsToggle(id)</code></td>
+                  <td><code>Promise&lt;{success, enabled}&gt;</code></td>
+                  <td>Enables or disables an installed extension.</td>
+                </tr>
+                <tr>
+                  <td><code>reloadGameframe()</code></td>
+                  <td><code>void</code></td>
+                  <td>Gracefully reloads the gameframe to apply newly activated scripts without client restart.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 5. Match Telemetry State -->
+        <section class="docs-section" id="telemetry-state">
+          <div class="docs-section-badge">Telemetry &middot; Read-Only State</div>
+          <h2 class="docs-h2">Match Telemetry State &middot; <code>window.__hb.state()</code></h2>
+          <p class="docs-text">
+            Inside the gameframe, <code>window.__hb.state()</code> provides a zero-overhead, read-only snapshot of current match telemetry. Polling this method is completely non-intrusive and safe for high-frequency render loops.
+          </p>
+          <div class="docs-codeblock">
+            <div class="docs-cb-head">
+              <span>read-telemetry.js</span>
+              <button class="docs-cb-copy">Copy</button>
+            </div>
+            <pre><span class="c-kw">const</span> snap = window.__hb ? window.__hb.<span class="c-fn">state</span>() : <span class="c-kw">null</span>;
+
+<span class="c-kw">if</span> (snap &amp;&amp; snap.ok) {
+  console.<span class="c-fn">log</span>(<span class="c-str">`Room: ${snap.roomName} | Phase: ${snap.phase}`</span>);
+  console.<span class="c-fn">log</span>(<span class="c-str">`Score: Red ${snap.scoreRed} &mdash; ${snap.scoreBlue} Blue`</span>);
+  <span class="c-kw">if</span> (snap.ball) {
+    <span class="c-kw">const</span> speedKmH = (Math.<span class="c-fn">hypot</span>(snap.ball.vx, snap.ball.vy) * <span class="c-num">3.6</span>).<span class="c-fn">toFixed</span>(<span class="c-num">1</span>);
+    console.<span class="c-fn">log</span>(<span class="c-str">`Ball Speed: ${speedKmH} km/h`</span>);
+  }
+}</pre>
+          </div>
+
+          <div class="docs-table-wrap">
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Field Property</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>ok</code></td>
+                  <td><code>boolean</code></td>
+                  <td><code>true</code> when currently connected to an active room with loaded stadium state.</td>
+                </tr>
+                <tr>
+                  <td><code>roomName</code></td>
+                  <td><code>string | null</code></td>
+                  <td>Name of the current room.</td>
+                </tr>
+                <tr>
+                  <td><code>phase</code></td>
+                  <td><code>'lobby' | 'countdown' | 'playing' | 'stopped'</code></td>
+                  <td>Current lifecycle phase of the match.</td>
+                </tr>
+                <tr>
+                  <td><code>myId</code></td>
+                  <td><code>number</code></td>
+                  <td>Local player ID allocated by the room host.</td>
+                </tr>
+                <tr>
+                  <td><code>scoreRed</code> / <code>scoreBlue</code></td>
+                  <td><code>number</code></td>
+                  <td>Current goal counts for Red and Blue teams.</td>
+                </tr>
+                <tr>
+                  <td><code>timeLimit</code> / <code>scoreLimit</code></td>
+                  <td><code>number</code></td>
+                  <td>Configured room limits in minutes and goals.</td>
+                </tr>
+                <tr>
+                  <td><code>elapsed</code></td>
+                  <td><code>number</code></td>
+                  <td>Total elapsed match time in seconds.</td>
+                </tr>
+                <tr>
+                  <td><code>locked</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Whether team switching is locked by the room administrator.</td>
+                </tr>
+                <tr>
+                  <td><code>ball</code></td>
+                  <td><code>{ x, y, vx, vy, r } | null</code></td>
+                  <td>Ball coordinates, velocity vector components, and radius in stadium units.</td>
+                </tr>
+                <tr>
+                  <td><code>players</code></td>
+                  <td><code>PlayerSnapshot[]</code></td>
+                  <td>Array of all player descriptors: <code>{ id, name, team, admin, kicks, country, avatar, playing, pos, vel }</code>.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 6. Event Subscriptions -->
+        <section class="docs-section" id="events">
+          <div class="docs-section-badge">Events &middot; Reactive API</div>
+          <h2 class="docs-h2">Event Subscriptions &middot; <code>window.__hb.on()</code></h2>
+          <p class="docs-text">
+            Subscribe to real-time room events without polling the DOM. Handlers are invoked immediately when the underlying engine processes incoming network packets.
+          </p>
+          <div class="docs-table-wrap">
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Event Name</th>
+                  <th>Callback Payload</th>
+                  <th>Trigger Condition</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>'goal'</code></td>
+                  <td><code>{ team: 'red' | 'blue' }</code></td>
+                  <td>Fired whenever a goal is validated by the referee engine.</td>
+                </tr>
+                <tr>
+                  <td><code>'matchEnd'</code></td>
+                  <td><code>{ team: 'red' | 'blue' }</code></td>
+                  <td>Fired when the match concludes via time expiration or score limit.</td>
+                </tr>
+                <tr>
+                  <td><code>'chat'</code></td>
+                  <td><code>{ player: number, name: string, msg: string }</code></td>
+                  <td>Fired when any player sends a public message.</td>
+                </tr>
+                <tr>
+                  <td><code>'whisper'</code></td>
+                  <td><code>{ player: number, name: string, msg: string }</code></td>
+                  <td>Fired when a private direct message is received.</td>
+                </tr>
+                <tr>
+                  <td><code>'join'</code></td>
+                  <td><code>{ player: number, name: string }</code></td>
+                  <td>Fired when a new user enters the room.</td>
+                </tr>
+                <tr>
+                  <td><code>'leave'</code></td>
+                  <td><code>{ player: number, name: string, reason, banned, by }</code></td>
+                  <td>Fired when a user leaves, is kicked, or is banned.</td>
+                </tr>
+                <tr>
+                  <td><code>'gameStart'</code></td>
+                  <td><code>{ by: string | null }</code></td>
+                  <td>Fired when an administrator kicks off the game.</td>
+                </tr>
+                <tr>
+                  <td><code>'gameStop'</code></td>
+                  <td><code>{ by: string | null }</code></td>
+                  <td>Fired when an administrator halts the game.</td>
+                </tr>
+                <tr>
+                  <td><code>'pause'</code></td>
+                  <td><code>{ by: string | null, paused: boolean, countdown: boolean }</code></td>
+                  <td>Fired when match play is paused or resumed.</td>
+                </tr>
+                <tr>
+                  <td><code>'teamMove'</code></td>
+                  <td><code>{ by, player, name, team: 'red' | 'blue' | 'spec' }</code></td>
+                  <td>Fired when a player changes team slots.</td>
+                </tr>
+                <tr>
+                  <td><code>'adminChange'</code></td>
+                  <td><code>{ by, player, name, admin: boolean }</code></td>
+                  <td>Fired when admin rights are granted or revoked.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="docs-codeblock">
+            <div class="docs-cb-head">
+              <span>event-listener.js</span>
+              <button class="docs-cb-copy">Copy</button>
+            </div>
+            <pre><span class="c-com">// Listen for scoring events and chat announcements</span>
+window.__hb.<span class="c-fn">on</span>(<span class="c-str">'goal'</span>, ({ team }) => {
+  console.<span class="c-fn">log</span>(<span class="c-str">`GOAL! The ${team.toUpperCase()} team scored!`</span>);
+});
+
+window.__hb.<span class="c-fn">on</span>(<span class="c-str">'join'</span>, ({ name }) => {
+  console.<span class="c-fn">log</span>(<span class="c-str">`Welcome ${name} to the match.`</span>);
+});</pre>
+          </div>
+        </section>
+
+        <!-- 7. Room Administration -->
+        <section class="docs-section" id="administration">
+          <div class="docs-section-badge">Admin &middot; Quality of Life</div>
+          <h2 class="docs-h2">Room Administration &amp; Actions</h2>
+          <p class="docs-text">
+            For room owners, tournament organizers, and community hosts, <code>window.__hb</code> provides safe, programmatic wrappers around standard room management actions:
+          </p>
+          <div class="docs-table-wrap">
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Method Signature</th>
+                  <th>Return Type</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>__hb.chat(message)</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Sends an in-game chat message to the room. Returns <code>true</code> if delivered.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.join(team)</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Moves local user to <code>'red'</code>, <code>'blue'</code>, or <code>'spec'</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.leave()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Safely exits the current room and transitions back to the lobby.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.start()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Starts match play if host privileges are present.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.stop()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Stops active match play.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.pause()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Toggles pause / resume state.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.auto()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Toggles automated team balancing.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.random()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Randomly shuffles players into Red and Blue teams.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.reset()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Resets room match statistics and scores.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.lock()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Locks or unlocks team slots to prevent unapproved joining.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 8. Production Examples -->
+        <section class="docs-section" id="examples">
+          <div class="docs-section-badge">Reference &middot; Production Ready</div>
+          <h2 class="docs-h2">Production Implementation Examples</h2>
+
+          <h3 class="docs-h3">Example 1: Liquid Glass Telemetry &amp; Ball Speed HUD</h3>
+          <p class="docs-text">
+            Builds a floating dark-glass HUD badge on top of the game canvas that calculates real-time ball velocity in km/h and displays match time:
+          </p>
+          <div class="docs-codeblock">
+            <div class="docs-cb-head">
+              <span>ball-telemetry-hud.user.js</span>
+              <button class="docs-cb-copy">Copy</button>
+            </div>
+            <pre><span class="c-com">// ==UserScript==</span>
+<span class="c-com">// @name         Ball Speed &amp; Telemetry HUD</span>
+<span class="c-com">// @version      1.0.0</span>
+<span class="c-com">// @description  Displays real-time ball velocity and match metrics.</span>
+<span class="c-com">// ==/UserScript==</span>
+
+(<span class="c-kw">function</span> () {
+  <span class="c-str">'use strict'</span>;
+  <span class="c-kw">if</span> (window.__ballSpeedHud) <span class="c-kw">return</span>;
+  window.__ballSpeedHud = <span class="c-kw">true</span>;
+
+  <span class="c-com">// Create floating HUD badge element</span>
+  <span class="c-kw">const</span> badge = document.<span class="c-fn">createElement</span>(<span class="c-str">'div'</span>);
+  badge.style.cssText = <span class="c-str">`
+    position: fixed;
+    top: 14px;
+    right: 18px;
+    z-index: 9999;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(27,33,37,0.92) 0%, rgba(20,26,30,0.85) 100%);
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    font-family: monospace;
+    font-size: 12px;
+    color: #f0f4f8;
+    pointer-events: none;
+    display: none;
+  `</span>;
+  document.body.<span class="c-fn">appendChild</span>(badge);
+
+  <span class="c-fn">setInterval</span>(() => {
+    <span class="c-kw">if</span> (!window.__hb) <span class="c-kw">return</span>;
+    <span class="c-kw">const</span> s = window.__hb.<span class="c-fn">state</span>();
+    <span class="c-kw">if</span> (!s || !s.ok || !s.ball || s.phase !== <span class="c-str">'playing'</span>) {
+      badge.style.display = <span class="c-str">'none'</span>;
+      <span class="c-kw">return</span>;
+    }
+
+    <span class="c-kw">const</span> speedKmH = (Math.<span class="c-fn">hypot</span>(s.ball.vx, s.ball.vy) * <span class="c-num">3.6</span>).<span class="c-fn">toFixed</span>(<span class="c-num">1</span>);
+    <span class="c-kw">const</span> mins = Math.<span class="c-fn">floor</span>(s.elapsed / <span class="c-num">60</span>);
+    <span class="c-kw">const</span> secs = String(s.elapsed % <span class="c-num">60</span>).<span class="c-fn">padStart</span>(<span class="c-num">2</span>, <span class="c-str">'0'</span>);
+
+    badge.innerHTML = <span class="c-str">`
+      &lt;span style="color:#6fe88a;font-weight:bold;"&gt;&bull; LIVE&lt;/span&gt;
+      &nbsp;&nbsp;Ball: &lt;b&gt;${speedKmH} km/h&lt;/b&gt;
+      &nbsp;|&nbsp; Clock: &lt;b&gt;${mins}:${secs}&lt;/b&gt;
+    `</span>;
+    badge.style.display = <span class="c-str">'block'</span>;
+  }, <span class="c-num">40</span>);
+})();</pre>
+          </div>
+
+          <h3 class="docs-h3">Example 2: Automated Tournament Referee &amp; Welcome Bot</h3>
+          <p class="docs-text">
+            Listens for player connections, broadcasts welcoming messages, monitors match goals, and announces final results upon match conclusion:
+          </p>
+          <div class="docs-codeblock">
+            <div class="docs-cb-head">
+              <span>tournament-referee.user.js</span>
+              <button class="docs-cb-copy">Copy</button>
+            </div>
+            <pre><span class="c-com">// ==UserScript==</span>
+<span class="c-com">// @name         Tournament Referee Bot</span>
+<span class="c-com">// @version      1.0.0</span>
+<span class="c-com">// @description  Automated match announcements and welcome greetings.</span>
+<span class="c-com">// ==/UserScript==</span>
+
+(<span class="c-kw">function</span> () {
+  <span class="c-str">'use strict'</span>;
+  <span class="c-kw">if</span> (window.__tournamentRef) <span class="c-kw">return</span>;
+  window.__tournamentRef = <span class="c-kw">true</span>;
+
+  <span class="c-kw">const</span> boot = () => {
+    <span class="c-kw">if</span> (!window.__hb) <span class="c-kw">return setTimeout</span>(boot, <span class="c-num">250</span>);
+
+    <span class="c-com">// Welcome connecting players</span>
+    window.__hb.<span class="c-fn">on</span>(<span class="c-str">'join'</span>, ({ name }) => {
+      window.__hb.<span class="c-fn">chat</span>(<span class="c-str">`Welcome to the lobby, ${name}!`</span>);
+    });
+
+    <span class="c-com">// Announce match goal tally</span>
+    window.__hb.<span class="c-fn">on</span>(<span class="c-str">'goal'</span>, ({ team }) => {
+      <span class="c-kw">const</span> s = window.__hb.<span class="c-fn">state</span>();
+      <span class="c-kw">if</span> (s) {
+        window.__hb.<span class="c-fn">chat</span>(
+          <span class="c-str">`[GOAL] ${team.toUpperCase()} scores! Current Score: Red ${s.scoreRed} &mdash; ${s.scoreBlue} Blue`</span>
+        );
+      }
+    });
+
+    <span class="c-com">// Announce match conclusion winner</span>
+    window.__hb.<span class="c-fn">on</span>(<span class="c-str">'matchEnd'</span>, ({ team }) => {
+      window.__hb.<span class="c-fn">chat</span>(<span class="c-str">`[MATCH OVER] Victory goes to the ${team.toUpperCase()} team! Well played.`</span>);
+    });
+  };
+
+  boot();
+})();</pre>
+          </div>
+
+          <h3 class="docs-h3">Example 3: Dynamic Discord RPC Score Syncer</h3>
+          <p class="docs-text">
+            Bridges in-game match state to Discord Rich Presence using the top-level Electron API:
+          </p>
+          <div class="docs-codeblock">
+            <div class="docs-cb-head">
+              <span>discord-score-syncer.user.js</span>
+              <button class="docs-cb-copy">Copy</button>
+            </div>
+            <pre><span class="c-com">// ==UserScript==</span>
+<span class="c-com">// @name         Discord Rich Presence Syncer</span>
+<span class="c-com">// @version      1.0.0</span>
+<span class="c-com">// @description  Syncs active match scores to Discord client presence.</span>
+<span class="c-com">// ==/UserScript==</span>
+
+(<span class="c-kw">function</span> () {
+  <span class="c-str">'use strict'</span>;
+  <span class="c-kw">if</span> (window.__discordSyncer) <span class="c-kw">return</span>;
+  window.__discordSyncer = <span class="c-kw">true</span>;
+
+  <span class="c-fn">setInterval</span>(() => {
+    <span class="c-kw">const</span> api = window.electronAPI || (window.parent &amp;&amp; window.parent.electronAPI);
+    <span class="c-kw">if</span> (!api || !window.__hb) <span class="c-kw">return</span>;
+
+    <span class="c-kw">const</span> s = window.__hb.<span class="c-fn">state</span>();
+    <span class="c-kw">if</span> (s &amp;&amp; s.ok &amp;&amp; s.phase === <span class="c-str">'playing'</span>) {
+      <span class="c-kw">const</span> msg = <span class="c-str">`Playing ${s.roomName || 'Match'} | Red ${s.scoreRed} - ${s.scoreBlue} Blue`</span>;
+      api.<span class="c-fn">updateDiscordRPC</span>(msg);
+    } <span class="c-kw">else</span> {
+      api.<span class="c-fn">updateDiscordRPC</span>(<span class="c-str">'In Lobby &bull; AtomHax v0.5.4'</span>);
+    }
+  }, <span class="c-num">3000</span>);
+})();</pre>
+          </div>
+        </section>
+
+        <!-- 9. Lifecycle & Safety -->
+        <section class="docs-section" id="best-practices">
+          <div class="docs-section-badge">Standards &middot; Best Practices</div>
+          <h2 class="docs-h2">Lifecycle, Timing &amp; Safety Guidelines</h2>
+          <p class="docs-text">
+            When developing extensions for the AtomHax client, follow these engineering standards to maintain high stability and smooth performance:
+          </p>
+          <div class="docs-callout">
+            <strong>1. Guard Against Duplicate Injections:</strong> Scripts re-evaluate when moving between rooms or replays. Protect global event listeners by checking an initialization flag like <code>if (window.__myScriptActive) return;</code> at the top of your file.
+          </div>
+          <div class="docs-callout note">
+            <strong>2. Do Not Block Native Typing:</strong> When capturing keyboard shortcuts, ensure the user is not actively typing inside chat or room input fields by checking <code>document.activeElement.tagName === 'INPUT'</code>.
+          </div>
+          <div class="docs-callout caution">
+            <strong>3. Observe DOM Rebuilds:</strong> HaxBall reconstructs portions of its DOM when transitioning between views. Use a <code>MutationObserver</code> or recurring interval when binding custom DOM elements to avoid losing UI nodes.
+          </div>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-container">
+      <span>AtomHax is Not Affiliated With Haxball.com in any way or form.</span>
+      <div class="footer-links">
+        <a href="index.html">Overview</a>
+        <a href="index.html#features">Features</a>
+        <a href="index.html#practice">Demo</a>
+        <a href="index.html#download">Download</a>
+        <a href="api.html">API Docs</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="atom.js" type="module" defer></script>
+  <script src="dock.js" type="module" defer></script>
+  <script>
+    // Copy code button interaction
+    document.querySelectorAll('.docs-cb-copy').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const code = button.closest('.docs-codeblock').querySelector('pre').innerText;
+        try {
+          await navigator.clipboard.writeText(code);
+          const original = button.textContent;
+          button.textContent = 'Copied!';
+          button.style.color = '#6fe88a';
+          setTimeout(() => {
+            button.textContent = original;
+            button.style.color = '';
+          }, 1500);
+        } catch (_) {}
+      });
+    });
+
+    // Active TOC link tracking
+    const tocLinks = document.querySelectorAll('.docs-toc-link');
+    const sections = [...tocLinks].map((link) => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+
+    const updateActiveToc = () => {
+      const scrollY = window.scrollY + 140;
+      let activeSection = sections[0];
+      sections.forEach((sec) => {
+        if (sec.offsetTop <= scrollY) activeSection = sec;
+      });
+      tocLinks.forEach((link) => {
+        link.classList.toggle('is-active', link.getAttribute('href') === '#' + (activeSection ? activeSection.id : ''));
+      });
+    };
+    window.addEventListener('scroll', updateActiveToc, { passive: true });
+    updateActiveToc();
+  </script>
+</body>
+</html>

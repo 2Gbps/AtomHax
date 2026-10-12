@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#000000">
-  <meta name="description" content="Technical reference for AtomHax scripts: injection contexts, game bridge API, and integration patterns.">
-  <title>Scripting API Reference — AtomHax</title>
+  <meta name="theme-color" content="#060a12">
+  <meta name="description" content="Technical reference for AtomHax: client extensibility, match telemetry, event subscriptions, and integration patterns.">
+  <title>AtomHax &mdash; Client Extensibility & API Reference</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="styles.css">
   <script type="importmap">
   {
@@ -20,718 +21,712 @@
     }
   }
   </script>
-  <style>
-    /* ─── DOCS PAGE — Apple HIG inspired layout ─── */
-    .docs-wrap {
-      position: relative;
-      z-index: 2;
-      width: min(1020px, calc(100% - 48px));
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 220px 1fr;
-      gap: 52px;
-      padding: calc(var(--nav-height) + 40px) 0 100px;
-    }
-
-    aside {
-      position: sticky;
-      top: calc(var(--nav-height) + 24px);
-      align-self: start;
-      max-height: calc(100vh - 100px);
-      overflow-y: auto;
-    }
-    .toc-title {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 12px;
-    }
-    #toc {
-      display: grid;
-      gap: 3px;
-      font-size: 12.5px;
-    }
-    #toc a {
-      color: var(--text-secondary);
-      padding: 6px 12px;
-      border-radius: var(--radius-pill);
-      transition: all 160ms ease;
-    }
-    #toc a:hover {
-      color: var(--text);
-      background: var(--surface-hover);
-    }
-    #toc a.active {
-      color: #ffffff;
-      background: rgba(255, 255, 255, 0.12);
-      font-weight: 500;
-    }
-
-    article {
-      min-width: 0;
-    }
-    article section {
-      padding: 38px 0;
-      border-top: 1px solid var(--line);
-      scroll-margin-top: calc(var(--nav-height) + 20px);
-    }
-    article section:first-child {
-      border-top: none;
-      padding-top: 0;
-    }
-    .sec-num {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      height: 22px;
-      padding: 0 10px;
-      font-size: 10.5px;
-      font-weight: 600;
-      color: var(--accent);
-      border-radius: var(--radius-pill);
-      background: rgba(41, 151, 255, 0.1);
-      margin-bottom: 12px;
-    }
-    article h1 {
-      font-size: clamp(32px, 4vw, 48px);
-      font-weight: 600;
-      letter-spacing: -0.035em;
-      line-height: 1.08;
-      color: #ffffff;
-      margin-bottom: 14px;
-    }
-    .lede {
-      color: var(--text-secondary);
-      font-size: 14px;
-      line-height: 1.55;
-      max-width: 64ch;
-    }
-    article h2 {
-      font-size: 20px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      color: #ffffff;
-      margin: 0 0 12px;
-      scroll-margin-top: calc(var(--nav-height) + 20px);
-    }
-    article h2 code {
-      font-size: 0.85em;
-      color: var(--text);
-    }
-    article h3 {
-      font-size: 14px;
-      font-weight: 600;
-      color: #ffffff;
-      margin: 22px 0 8px;
-      scroll-margin-top: calc(var(--nav-height) + 20px);
-    }
-    article p {
-      color: var(--text-secondary);
-      font-size: 13px;
-      line-height: 1.55;
-      max-width: 72ch;
-      margin: 10px 0;
-      overflow-wrap: anywhere;
-    }
-    article p strong {
-      color: var(--text);
-      font-weight: 600;
-    }
-    article ul, article ol {
-      color: var(--text-secondary);
-      font-size: 13px;
-      line-height: 1.55;
-      max-width: 72ch;
-      margin: 10px 0 10px 20px;
-      display: grid;
-      gap: 6px;
-    }
-    article li strong {
-      color: var(--text);
-    }
-
-    code {
-      font-family: var(--font-mono);
-      font-size: 11.5px;
-      background: rgba(255, 255, 255, 0.08);
-      padding: 2px 6px;
-      border-radius: 6px;
-      color: var(--text);
-    }
-
-    .codeblock {
-      border: 1px solid var(--surface-border);
-      border-radius: 14px;
-      background: var(--surface);
-      margin: 16px 0;
-      overflow: hidden;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-    }
-    .cb-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 14px;
-      border-bottom: 1px solid var(--line);
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-    .copy-btn {
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--text-secondary);
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: var(--radius-pill);
-      padding: 3px 12px;
-      cursor: pointer;
-      transition: all 160ms ease;
-    }
-    .copy-btn:hover {
-      color: #ffffff;
-      background: rgba(255, 255, 255, 0.14);
-    }
-    .codeblock pre {
-      margin: 0;
-      padding: 14px 18px;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      line-height: 1.65;
-      overflow-x: auto;
-      color: var(--text);
-    }
-    .c-com { color: #6e6e73; }
-    .c-kw  { color: #ff7ab2; font-weight: 500; }
-    .c-fn  { color: #78c2b4; }
-    .c-str { color: #ff8170; }
-    .c-num { color: #d0a8ff; }
-
-    .api-table-wrap {
-      border: 1px solid var(--surface-border);
-      border-radius: 14px;
-      overflow: hidden;
-      margin: 16px 0;
-      overflow-x: auto;
-      background: var(--surface);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-    }
-    table.api {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12.5px;
-    }
-    table.api th {
-      text-align: left;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      padding: 10px 14px;
-      background: rgba(255, 255, 255, 0.03);
-      border-bottom: 1px solid var(--line);
-    }
-    table.api td {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--line);
-      vertical-align: top;
-      color: var(--text-secondary);
-      line-height: 1.5;
-    }
-    table.api tr:last-child td {
-      border-bottom: none;
-    }
-    table.api td:first-child {
-      white-space: nowrap;
-      font-family: var(--font-mono);
-      font-size: 11.5px;
-      color: var(--text);
-    }
-    table.api td .t {
-      font-family: var(--font-mono);
-      font-size: 10.5px;
-      color: var(--text-muted);
-    }
-
-    .callout {
-      border: 1px solid rgba(41, 151, 255, 0.25);
-      border-radius: 12px;
-      background: rgba(41, 151, 255, 0.06);
-      padding: 12px 16px;
-      margin: 14px 0;
-      font-size: 12.5px;
-      line-height: 1.55;
-      color: var(--text-secondary);
-      max-width: 72ch;
-    }
-    .callout strong {
-      color: #ffffff;
-    }
-
-    @media (max-width: 860px) {
-      .docs-wrap {
-        grid-template-columns: 1fr;
-        gap: 28px;
-        padding-top: calc(var(--nav-height) + 24px);
-      }
-      aside {
-        position: static;
-        max-height: none;
-      }
-    }
-
-    @media (max-width: 600px) {
-      .docs-wrap {
-        width: calc(100% - 32px);
-      }
-    }
-  </style>
 </head>
 <body>
-  <div class="scroll-progress" aria-hidden="true"></div>
+  <canvas id="atom-canvas" aria-hidden="true"></canvas>
 
-  <header class="nav-header">
-    <div class="nav-container">
-      <a class="nav-brand" href="index.html">
-        <img class="nav-brand-logo" src="assets/logo.svg" alt="" width="18" height="18" onerror="this.style.display='none'">
-        <span>AtomHax</span>
-      </a>
-      <nav class="nav-links">
-        <a class="nav-link" href="index.html#showcase">Overview</a>
-        <a class="nav-link" href="index.html#features">Architecture</a>
-        <a class="nav-link is-active" href="scripting.html">API Reference</a>
-        <a class="nav-link" href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">GitHub</a>
-      </nav>
-      <div class="nav-actions">
-        <a class="nav-btn" href="index.html#download">Get v0.5.4</a>
-      </div>
+  <!-- Navigation Brand Pill -->
+  <a class="nav-brand" href="index.html">
+    <img class="nav-brand-logo" src="assets/atomhax-mark.png" alt="AtomHax" width="16" height="16">
+    <span>AtomHax</span>
+  </a>
+
+  <!-- Floating macOS Dock Navigation -->
+  <nav class="nav">
+    <div class="dock">
+      <a class="dock-item" href="index.html">Overview</a>
+      <a class="dock-item" href="index.html#features">Features</a>
+      <a class="dock-item" href="index.html#practice">Demo</a>
+      <a class="dock-item" href="index.html#download">Download</a>
+      <a class="dock-item is-active" href="api.html">API Docs</a>
     </div>
-  </header>
+  </nav>
 
-  <div class="docs-wrap">
-    <aside>
-      <div class="toc-title">On this page</div>
-      <nav id="toc">
-        <a href="#overview">Overview</a>
-        <a href="#anatomy">Script anatomy</a>
-        <a href="#contexts">Injection contexts</a>
-        <a href="#bridge">Engine bridge &middot; window.parent.g</a>
-        <a href="#bridge-snap">g.snap()</a>
-        <a href="#bridge-input">g.in() / g.out()</a>
-        <a href="#bridge-op">g.opSet()</a>
-        <a href="#client-api">Client API &middot; electronAPI</a>
-        <a href="#storage">Storage</a>
-        <a href="#lifecycle">Lifecycle &amp; timing</a>
-        <a href="#patterns">Patterns</a>
-        <a href="#example">Full example</a>
-      </nav>
-    </aside>
+  <main class="docs-page-container">
+    <header class="docs-hero">
+      <div class="tag-badge">
+        <span class="badge-chrome">Client Extensibility</span>
+        <span>AtomHax v0.5.4 API</span>
+      </div>
+      <h1 class="docs-hero-title">Client Scripting &amp; Extensibility API</h1>
+      <p class="docs-hero-sub">The complete technical specification for creating client extensions, custom HUD telemetry overlays, tournament referee automation, and Discord Rich Presence integrations in AtomHax.</p>
+    </header>
 
-    <article>
-      <section id="overview">
-        <span class="sec-num">Reference &middot; v0.5.4</span>
-        <h1>Scripts, explained.</h1>
-        <p class="lede">
-          AtomHax loads plain JavaScript files from disk and injects them into the running HaxBall page
-          at the right moment. Choose the page they run in, then use the small bridge inside the client
-          to read live match state and send input.
-        </p>
-        <div class="callout">
-          Scripts run in your own client, in your own session, with your own privileges. They are
-          regular page JavaScript — no sandbox, no review. Don't run scripts you haven't read.
-        </div>
-      </section>
+    <div class="docs-layout">
+      <!-- Sticky Sidebar Table of Contents -->
+      <aside class="docs-sidebar">
+        <div class="docs-sidebar-title">Documentation</div>
+        <nav class="docs-toc" id="docs-toc">
+          <a class="docs-toc-link is-active" href="#overview">Overview</a>
+          <a class="docs-toc-link" href="#anatomy">Script Anatomy</a>
+          <a class="docs-toc-link" href="#contexts">Execution Contexts</a>
+          <a class="docs-toc-link" href="#electron-api">Desktop Client API</a>
+          <a class="docs-toc-link" href="#telemetry-state">Match Telemetry State</a>
+          <a class="docs-toc-link" href="#events">Event Subscriptions</a>
+          <a class="docs-toc-link" href="#administration">Room Administration</a>
+          <a class="docs-toc-link" href="#examples">Production Examples</a>
+          <a class="docs-toc-link" href="#best-practices">Lifecycle &amp; Safety</a>
+        </nav>
+      </aside>
 
-      <section id="anatomy">
-        <h2>Script anatomy</h2>
-        <p>
-          A script is any <code>.js</code> file with an optional userscript-style metadata header.
-          The header is parsed with simple line comments — nothing else about it is special.
-        </p>
-        <div class="codeblock" data-code>
-          <div class="cb-head"><span>script header</span><button class="copy-btn">copy</button></div>
-          <pre><span class="c-com">// ==UserScript==</span>
-<span class="c-com">// @name       Ball proximity alert</span>   <span class="c-com">// shown in the scripts UI</span>
-<span class="c-com">// @version    1.0.0</span>
-<span class="c-com">// @noframes   true</span>                    <span class="c-com">// controls where the script runs — see below</span>
+      <!-- Main Documentation Content -->
+      <article class="docs-content">
+        <!-- 1. Overview -->
+        <section class="docs-section" id="overview">
+          <div class="docs-section-badge">Architecture &middot; Core</div>
+          <h2 class="docs-h2">Overview</h2>
+          <p class="docs-text">
+            AtomHax includes a native client extensibility pipeline that executes standard JavaScript files directly inside the client runtime. Scripts run locally in your dedicated session with zero external latency and direct access to game telemetry and client lifecycle events.
+          </p>
+          <p class="docs-text">
+            The client extension ecosystem is engineered for tournament referees, league statistics tracking, custom head-up displays (HUD), macro assistants, and Discord Rich Presence broadcasters without altering game physics or server trust boundaries.
+          </p>
+          <div class="docs-callout note">
+            <strong>Local Execution Sandbox:</strong> Extensions execute client-side with native permissions in your client environment. Scripts operate on standard Web APIs and the secure Electron preload bridge.
+          </div>
+        </section>
+
+        <!-- 2. Script Anatomy -->
+        <section class="docs-section" id="anatomy">
+          <div class="docs-section-badge">Specification &middot; File Format</div>
+          <h2 class="docs-h2">Script Anatomy &amp; Metadata</h2>
+          <p class="docs-text">
+            Every extension is a clean <code>.js</code> file containing an optional userscript header block. The AtomHax Script Manager inspects this header to display the extension name, version, and execution target inside the client sidebar.
+          </p>
+          <div class="docs-codeblock">
+            <div class="docs-cb-head">
+              <span>extension-header.js</span>
+              <button class="docs-cb-copy">Copy</button>
+            </div>
+            <pre><span class="c-com">// ==UserScript==</span>
+<span class="c-com">// @name         Match Telemetry HUD</span>
+<span class="c-com">// @version      1.2.0</span>
+<span class="c-com">// @description  Renders live ball velocity and match clock on a glass canvas badge.</span>
+<span class="c-com">// @noframes     false</span>
 <span class="c-com">// ==/UserScript==</span>
 
-<span class="c-com">// everything after the header is a normal IIFE or top-level code</span>
 (<span class="c-kw">function</span> () {
   <span class="c-str">'use strict'</span>;
-  <span class="c-com">// ...</span>
+
+  <span class="c-com">// Single-initialization guard</span>
+  <span class="c-kw">if</span> (window.__telemetryHudLoaded) <span class="c-kw">return</span>;
+  window.__telemetryHudLoaded = <span class="c-kw">true</span>;
+
+  <span class="c-com">// Extension logic executes here</span>
 })();</pre>
-        </div>
-        <div class="api-table-wrap">
-          <table class="api">
-            <tr><th>Field</th><th>Effect</th></tr>
-            <tr><td>@name</td><td>Display name in the scripts panel. <span class="t">string</span></td></tr>
-            <tr><td>@version</td><td>Informational. <span class="t">string</span></td></tr>
-            <tr>
-              <td>@noframes</td>
-              <td>
-                When set to <code>true</code>, the script runs in the <strong>top-level page</strong>
-                (the Electron renderer document). When absent or false, it runs
-                <strong>inside the gameframe</strong>, in HaxBall's own JS window.
-              </td>
-            </tr>
-          </table>
-        </div>
-      </section>
+          </div>
 
-      <section id="contexts">
-        <h2>Injection contexts</h2>
-        <p>Each script runs in exactly one of two JS windows. Pick based on what your script touches:</p>
-        <div class="api-table-wrap">
-          <table class="api">
-            <tr><th></th><th>Gameframe (default)</th><th>Top-level (@noframes true)</th></tr>
-            <tr>
-              <td>Where</td>
-              <td><code>html5.haxball.com</code> iframe document</td>
-              <td>The Electron window document</td>
-            </tr>
-            <tr>
-              <td>Can reach</td>
-              <td>Game DOM (canvas, chat, room view), engine objects</td>
-              <td>Client UI, other frames via <code>document.querySelector('iframe.gameframe')</code></td>
-            </tr>
-            <tr>
-              <td>Engine bridge</td>
-              <td><code>window.parent.g</code></td>
-              <td><code>window.g</code> (same object)</td>
-            </tr>
-            <tr>
-              <td>Injected when</td>
-              <td><code>did-frame-finish-load</code> on the gameframe</td>
-              <td><code>did-frame-finish-load</code> on the top page</td>
-            </tr>
-            <tr>
-              <td>Good for</td>
-              <td>Gameplay hooks, HUD overlays, input control</td>
-              <td>DOM tweaks around the game, scripts that manage the gameframe</td>
-            </tr>
-          </table>
-        </div>
-        <p>
-          In either window, write code that works in both if it helps: check <code>window.g</code> first,
-          fall back to <code>window.parent.g</code>. The engine bridge is installed by the patched
-          engine that ships with the client — it is present from the moment the gameframe loads.
-        </p>
-      </section>
+          <div class="docs-table-wrap">
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Header Directive</th>
+                  <th>Type</th>
+                  <th>Behavior &amp; Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>@name</code></td>
+                  <td><code>string</code></td>
+                  <td>Display name presented in the client settings and scripts manager drawer.</td>
+                </tr>
+                <tr>
+                  <td><code>@version</code></td>
+                  <td><code>string</code></td>
+                  <td>Semantic version string for extension tracking and updates.</td>
+                </tr>
+                <tr>
+                  <td><code>@description</code></td>
+                  <td><code>string</code></td>
+                  <td>Brief description of the extension capabilities.</td>
+                </tr>
+                <tr>
+                  <td><code>@noframes</code></td>
+                  <td><code>boolean</code></td>
+                  <td>When <code>true</code>, executes in the top-level Electron renderer shell. When omitted or <code>false</code>, executes inside the game frame with direct canvas access.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-      <section id="bridge">
-        <h2>Engine bridge &middot; <code>window.parent.g</code></h2>
-        <p>
-          The bridge is a single object installed at gameframe load. It is deliberately tiny and
-          stable — the function names are the API. Handle identity: the object exposes a
-          <code>bh</code> marker you can check before use.
-        </p>
-        <div class="api-table-wrap">
-          <table class="api">
-            <tr><th>Member</th><th>Signature</th><th>What it does</th></tr>
-            <tr><td>bh <span class="t">1</span></td><td>—</td><td>Presence marker. If <code>window.parent.g?.bh</code> is falsy, the bridge isn't there yet.</td></tr>
-            <tr><td>snap</td><td>() &rarr; SnapResult</td><td>One-shot copy of live match state. Read-only, safe to poll.</td></tr>
-            <tr><td>in</td><td>(mask: string) &rarr; 0 | 1</td><td>Presses a virtual input (adds it to the engine's active-input set).</td></tr>
-            <tr><td>out</td><td>(mask: string) &rarr; 0 | 1</td><td>Releases a virtual input.</td></tr>
-            <tr><td>opSet</td><td>(v: number) &rarr; number</td><td>Sets power, clamped to 0&ndash;100. Returns the applied value.</td></tr>
-            <tr><td>_rm</td><td>object</td><td>Internal room-manager handle. Unstable — use <code>snap()</code> instead of reaching into it.</td></tr>
-          </table>
-        </div>
+        <!-- 3. Execution Contexts -->
+        <section class="docs-section" id="contexts">
+          <div class="docs-section-badge">Runtime &middot; Environment</div>
+          <h2 class="docs-h2">Execution Contexts</h2>
+          <p class="docs-text">
+            AtomHax provides two distinct runtime environments depending on what the extension manages:
+          </p>
+          <div class="docs-table-wrap">
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Context Target</th>
+                  <th>Document Target</th>
+                  <th>Accessible APIs</th>
+                  <th>Primary Use Cases</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Gameframe (Default)</strong></td>
+                  <td><code>game/game.html</code> iframe</td>
+                  <td><code>window.__hb</code>, Game DOM, Canvas, In-game Chat, Room View</td>
+                  <td>HUD overlays, match stat monitors, custom UI widgets, referee bots</td>
+                </tr>
+                <tr>
+                  <td><strong>Top Shell (<code>@noframes true</code>)</strong></td>
+                  <td>Main Electron window</td>
+                  <td><code>window.electronAPI</code>, App Window Shell, Sidebar Controls</td>
+                  <td>Window chrome widgets, sound mixers, external integrations</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-        <h3 id="bridge-snap">g.snap()</h3>
-        <p>Returns a snapshot object. Every field except <code>ok</code> may be missing when there is no game running — check <code>ok</code> first, then null-check what you use.</p>
-        <div class="api-table-wrap">
-          <table class="api">
-            <tr><th>Field</th><th>Type</th><th>Meaning</th></tr>
-            <tr><td>ok</td><td><span class="t">0 | 1</span></td><td>1 when a room with a running game was reachable.</td></tr>
-            <tr><td>pid</td><td><span class="t">number</span></td><td>Your player id in the current room.</td></tr>
-            <tr><td>ball</td><td><span class="t">{x, y, vx, vy, r}</span></td><td>Ball position, velocity, radius. Coordinates in stadium units.</td></tr>
-            <tr><td>me</td><td><span class="t">{x, y, r}</span></td><td>Your user circle position and radius. Missing when spectating or not spawned.</td></tr>
-            <tr><td>players</td><td><span class="t">number</span></td><td>Player count in the room.</td></tr>
-            <tr><td>fieldW / fieldH</td><td><span class="t">number</span></td><td>Field bounding box, derived from the stadium discs. Defaults to 800&times;560 if the stadium shape can't be measured.</td></tr>
-            <tr><td>frame</td><td><span class="t">number</span></td><td>Current game frame counter.</td></tr>
-            <tr><td>ts</td><td><span class="t">number</span></td><td><code>Date.now()</code> when the snapshot was taken.</td></tr>
-          </table>
-        </div>
-        <div class="codeblock" data-code>
-          <div class="cb-head"><span>polling snapshot</span><button class="copy-btn">copy</button></div>
-          <pre><span class="c-kw">const</span> g = window.parent.g;
+        <!-- 4. Desktop Client API -->
+        <section class="docs-section" id="electron-api">
+          <div class="docs-section-badge">Client API &middot; Preload Bridge</div>
+          <h2 class="docs-h2">Desktop Client API &middot; <code>window.electronAPI</code></h2>
+          <p class="docs-text">
+            The desktop client exposes a secure IPC bridge on <code>window.electronAPI</code>. This bridge allows extensions to inspect and persist preferences, trigger Discord RPC updates, generate cryptographic player identifiers, and manage extension files.
+          </p>
+          <div class="docs-table-wrap">
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Method Signature</th>
+                  <th>Return Type</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>getAppPreferences()</code></td>
+                  <td><code>Promise&lt;AppPreferences&gt;</code></td>
+                  <td>Returns stored client configurations (FPS uncap, render scaling, shortcuts, discord RPC).</td>
+                </tr>
+                <tr>
+                  <td><code>setAppPreference(key, value)</code></td>
+                  <td><code>Promise&lt;boolean&gt;</code></td>
+                  <td>Persists a specific user preference key in <code>preferences.json</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>updateDiscordRPC(details)</code></td>
+                  <td><code>void</code></td>
+                  <td>Updates the client Discord Rich Presence status string in real time.</td>
+                </tr>
+                <tr>
+                  <td><code>generatePlayerAuthKey()</code></td>
+                  <td><code>Promise&lt;string&gt;</code></td>
+                  <td>Generates or retrieves the ECDSA P-256 cryptographic auth key identifying your player profile.</td>
+                </tr>
+                <tr>
+                  <td><code>exportPreferencesFile()</code></td>
+                  <td><code>Promise&lt;{success: boolean}&gt;</code></td>
+                  <td>Exports application configuration backup to disk.</td>
+                </tr>
+                <tr>
+                  <td><code>importPreferencesFile()</code></td>
+                  <td><code>Promise&lt;{success: boolean}&gt;</code></td>
+                  <td>Opens file dialogue to restore saved preferences.</td>
+                </tr>
+                <tr>
+                  <td><code>scriptsList()</code></td>
+                  <td><code>Promise&lt;NyxScript[]&gt;</code></td>
+                  <td>Returns array of installed scripts with <code>{id, name, content, enabled}</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>scriptsToggle(id)</code></td>
+                  <td><code>Promise&lt;{success, enabled}&gt;</code></td>
+                  <td>Enables or disables an installed extension.</td>
+                </tr>
+                <tr>
+                  <td><code>reloadGameframe()</code></td>
+                  <td><code>void</code></td>
+                  <td>Gracefully reloads the gameframe to apply newly activated scripts without client restart.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-<span class="c-fn">setInterval</span>(() => {
-  <span class="c-kw">const</span> s = g.<span class="c-fn">snap</span>();
-  <span class="c-kw">if</span> (!s.ok || !s.me || !s.ball) <span class="c-kw">return</span>;   <span class="c-com">// no game, or spectating</span>
-  <span class="c-kw">const</span> dist = Math.<span class="c-fn">hypot</span>(s.ball.x - s.me.x, s.ball.y - s.me.y);
-  <span class="c-com">// dist is in stadium units; player radius is usually 15, ball 10</span>
-}, <span class="c-num">50</span>);</pre>
-        </div>
+        <!-- 5. Match Telemetry State -->
+        <section class="docs-section" id="telemetry-state">
+          <div class="docs-section-badge">Telemetry &middot; Read-Only State</div>
+          <h2 class="docs-h2">Match Telemetry State &middot; <code>window.__hb.state()</code></h2>
+          <p class="docs-text">
+            Inside the gameframe, <code>window.__hb.state()</code> provides a zero-overhead, read-only snapshot of current match telemetry. Polling this method is completely non-intrusive and safe for high-frequency render loops.
+          </p>
+          <div class="docs-codeblock">
+            <div class="docs-cb-head">
+              <span>read-telemetry.js</span>
+              <button class="docs-cb-copy">Copy</button>
+            </div>
+            <pre><span class="c-kw">const</span> snap = window.__hb ? window.__hb.<span class="c-fn">state</span>() : <span class="c-kw">null</span>;
 
-        <h3 id="bridge-input">g.in() / g.out()</h3>
-        <p>
-          These drive the engine's own input set — the same set your physical keys feed. A mask is
-          one of the five action strings. <code>in</code> is "hold", <code>out</code> is "release".
-          Returns 1 when applied, 0 when the room/input controller isn't available yet.
-        </p>
-        <div class="api-table-wrap">
-          <table class="api">
-            <tr><th>Mask</th><th>Meaning</th></tr>
-            <tr><td>'Up' <span class="t">| 'Down' | 'Left' | 'Right'</span></td><td>Movement directions.</td></tr>
-            <tr><td>'Kick'</td><td>Kick / grab action.</td></tr>
-          </table>
-        </div>
-        <div class="codeblock" data-code>
-          <div class="cb-head"><span>tap pattern — press, hold, release</span><button class="copy-btn">copy</button></div>
-          <pre><span class="c-kw">const</span> g = window.parent.g;
-
-<span class="c-kw">function</span> <span class="c-fn">tap</span>(mask, holdMs = <span class="c-num">40</span>) {
-  <span class="c-kw">if</span> (!g) <span class="c-kw">return</span>;
-  g.<span class="c-fn">in</span>(mask);
-  <span class="c-fn">setTimeout</span>(() => g.<span class="c-fn">out</span>(mask), holdMs);
-}
-
-<span class="c-com">// hold Left for 120ms, then release</span>
-<span class="c-fn">tap</span>(<span class="c-str">'Left'</span>, <span class="c-num">120</span>);</pre>
-        </div>
-        <div class="callout">
-          <strong>Don't leak masks.</strong> If your script holds a direction, release it when the
-          game stops (room change, spectate) or the user circle will keep drifting after your script's
-          window closes. Track what you pressed and call <code>g.out()</code> on cleanup.
-        </div>
-
-        <h3 id="bridge-op">g.opSet()</h3>
-        <p>Power value, integer 0&ndash;100, clamped on set. Zero disables; the engine's stock default is 5.</p>
-        <div class="codeblock" data-code>
-          <div class="cb-head"><span>power</span><button class="copy-btn">copy</button></div>
-          <pre>g.<span class="c-fn">opSet</span>(<span class="c-num">25</span>);      <span class="c-com">// returns 25</span>
-g.<span class="c-fn">opSet</span>(<span class="c-num">9001</span>);   <span class="c-com">// clamped &rarr; returns 100</span></pre>
-        </div>
-      </section>
-
-      <section id="client-api">
-        <h2>Client API &middot; <code>window.electronAPI</code></h2>
-        <p>
-          Available in both windows through the preload bridge. Scripts rarely need these — the
-          client UI already wraps them — but they're part of the contract.
-        </p>
-        <div class="api-table-wrap">
-          <table class="api">
-            <tr><th>Method</th><th>Returns</th><th>Notes</th></tr>
-            <tr><td>scriptsList()</td><td><span class="t">Promise&lt;AtomHaxScript[]&gt;</span></td><td>All stored scripts with id, name, content, enabled.</td></tr>
-            <tr><td>scriptsImport()</td><td><span class="t">Promise&lt;{success, imported}&gt;</span></td><td>Opens a file dialog, reads selected .js files, stores them.</td></tr>
-            <tr><td>scriptsToggle(id)</td><td><span class="t">Promise&lt;{success, enabled}&gt;</span></td><td>Flips the enabled flag in scripts.json.</td></tr>
-            <tr><td>scriptsDelete(id)</td><td><span class="t">Promise&lt;{success}&gt;</span></td><td>Removes the script from storage.</td></tr>
-            <tr><td>reloadGameframe()</td><td><span class="t">void</span></td><td>Reloads the game iframe — the way a toggled script takes effect.</td></tr>
-            <tr><td>getAppPreferences()</td><td><span class="t">Promise&lt;object&gt;</span></td><td>Client preferences (fps_limit, shortcuts, render_scale, ...).</td></tr>
-            <tr><td>setAppPreference(key, value)</td><td><span class="t">Promise</span></td><td>Persists one preference.</td></tr>
-            <tr><td>updateDiscordRPC(text)</td><td><span class="t">void</span></td><td>Updates Discord rich presence state text.</td></tr>
-          </table>
-        </div>
-      </section>
-
-      <section id="storage">
-        <h2>Storage</h2>
-        <p>
-          Scripts live in <code>scripts.json</code> inside the app's userData directory
-          (<code>%APPDATA%/atomhax/</code> on Windows). The format is a flat array — edit it while
-          the client is closed if you want to bulk-import.
-        </p>
-        <div class="codeblock" data-code>
-          <div class="cb-head"><span>scripts.json</span><button class="copy-btn">copy</button></div>
-          <pre>[
-  {
-    <span class="c-str">"id"</span>: <span class="c-str">"a1f0..."</span>,        <span class="c-com">// generated at import time</span>
-    <span class="c-str">"name"</span>: <span class="c-str">"Ball proximity alert"</span>,
-    <span class="c-str">"content"</span>: <span class="c-str">"// ==UserScript== ..."</span>,   <span class="c-com">// full file contents, header included</span>
-    <span class="c-str">"enabled"</span>: true
+<span class="c-kw">if</span> (snap &amp;&amp; snap.ok) {
+  console.<span class="c-fn">log</span>(<span class="c-str">`Room: ${snap.roomName} | Phase: ${snap.phase}`</span>);
+  console.<span class="c-fn">log</span>(<span class="c-str">`Score: Red ${snap.scoreRed} &mdash; ${snap.scoreBlue} Blue`</span>);
+  <span class="c-kw">if</span> (snap.ball) {
+    <span class="c-kw">const</span> speedKmH = (Math.<span class="c-fn">hypot</span>(snap.ball.vx, snap.ball.vy) * <span class="c-num">3.6</span>).<span class="c-fn">toFixed</span>(<span class="c-num">1</span>);
+    console.<span class="c-fn">log</span>(<span class="c-str">`Ball Speed: ${speedKmH} km/h`</span>);
   }
-]</pre>
-        </div>
-        <p>
-          Only enabled scripts are injected, and they run on every gameframe load for the whole
-          session — joining a room, changing rooms, opening a replay all re-inject. Scripts that
-          touch global state should guard against double-run (see patterns).
-        </p>
-      </section>
-
-      <section id="lifecycle">
-        <h2>Lifecycle &amp; timing</h2>
-        <ol>
-          <li>
-            <strong>Injection point.</strong> Scripts are executed via
-            <code>WebFrameMain.executeJavaScript</code> on <code>did-frame-finish-load</code>.
-            For gameframe scripts that means the frame's DOM is parsed but the game script may
-            still be initializing — attach with the same tolerance you'd use on the real site:
-            poll or wait for elements rather than assuming they exist on line one.
-          </li>
-          <li>
-            <strong>Re-render.</strong> HaxBall rebuilds parts of its DOM when you move between
-            screens. Anything you appended to the game document can vanish. Re-check existence in
-            your loop, or observe the document with a <code>MutationObserver</code>.
-          </li>
-          <li>
-            <strong>Focus.</strong> The gameframe is focused while playing; keydown listeners
-            attached from the top-level page won't see keystrokes destined for the game. Scripts
-            that need keyboard input should run in the gameframe window (no <code>@noframes</code>)
-            or attach listeners to <code>gameframe.contentDocument</code>.
-          </li>
-          <li>
-            <strong>Reload semantics.</strong> Editing or toggling a script in the UI does not
-            retro-inject — it applies on the next gameframe load. Use the client's
-            <em>reload gameframe</em> action to re-run everything.
-          </li>
-          <li>
-            <strong>Single-init guard.</strong> Injection happens per frame load; the top-level
-            page can also trigger extra loads. Guard your script's global state:
-            <code>if (window.__myScriptLoaded) return;</code>
-          </li>
-        </ol>
-      </section>
-
-      <section id="patterns">
-        <h2>Patterns</h2>
-        <h3>Works in both windows</h3>
-        <div class="codeblock" data-code>
-          <div class="cb-head"><span>works in both windows</span><button class="copy-btn">copy</button></div>
-          <pre><span class="c-kw">function</span> <span class="c-fn">getBridge</span>() {
-  <span class="c-kw">try</span> { <span class="c-kw">if</span> (window.g &amp;&amp; window.g.bh) <span class="c-kw">return</span> window.g; } <span class="c-kw">catch</span> (e) {}
-  <span class="c-kw">try</span> { <span class="c-kw">if</span> (window.parent &amp;&amp; window.parent.g &amp;&amp; window.parent.g.bh)
-        <span class="c-kw">return</span> window.parent.g; } <span class="c-kw">catch</span> (e) {}
-  <span class="c-kw">return</span> null;
 }</pre>
-        </div>
+          </div>
 
-        <h3>Don't hijack the game's keys while typing</h3>
-        <p>Chat input steals focus when the user types. Guard your hotkey handler:</p>
-        <div class="codeblock" data-code>
-          <div class="cb-head"><span>typing guard</span><button class="copy-btn">copy</button></div>
-          <pre><span class="c-kw">function</span> <span class="c-fn">isTyping</span>() {
-  <span class="c-kw">const</span> el = document.activeElement;
-  <span class="c-kw">if</span> (!el) <span class="c-kw">return</span> false;
-  <span class="c-kw">const</span> tag = (el.tagName || <span class="c-str">''</span>).toUpperCase();
-  <span class="c-kw">return</span> tag === <span class="c-str">'INPUT'</span> || tag === <span class="c-str">'TEXTAREA'</span> || el.isContentEditable;
-}
+          <div class="docs-table-wrap">
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Field Property</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>ok</code></td>
+                  <td><code>boolean</code></td>
+                  <td><code>true</code> when currently connected to an active room with loaded stadium state.</td>
+                </tr>
+                <tr>
+                  <td><code>roomName</code></td>
+                  <td><code>string | null</code></td>
+                  <td>Name of the current room.</td>
+                </tr>
+                <tr>
+                  <td><code>phase</code></td>
+                  <td><code>'lobby' | 'countdown' | 'playing' | 'stopped'</code></td>
+                  <td>Current lifecycle phase of the match.</td>
+                </tr>
+                <tr>
+                  <td><code>myId</code></td>
+                  <td><code>number</code></td>
+                  <td>Local player ID allocated by the room host.</td>
+                </tr>
+                <tr>
+                  <td><code>scoreRed</code> / <code>scoreBlue</code></td>
+                  <td><code>number</code></td>
+                  <td>Current goal counts for Red and Blue teams.</td>
+                </tr>
+                <tr>
+                  <td><code>timeLimit</code> / <code>scoreLimit</code></td>
+                  <td><code>number</code></td>
+                  <td>Configured room limits in minutes and goals.</td>
+                </tr>
+                <tr>
+                  <td><code>elapsed</code></td>
+                  <td><code>number</code></td>
+                  <td>Total elapsed match time in seconds.</td>
+                </tr>
+                <tr>
+                  <td><code>locked</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Whether team switching is locked by the room administrator.</td>
+                </tr>
+                <tr>
+                  <td><code>ball</code></td>
+                  <td><code>{ x, y, vx, vy, r } | null</code></td>
+                  <td>Ball coordinates, velocity vector components, and radius in stadium units.</td>
+                </tr>
+                <tr>
+                  <td><code>players</code></td>
+                  <td><code>PlayerSnapshot[]</code></td>
+                  <td>Array of all player descriptors: <code>{ id, name, team, admin, kicks, country, avatar, playing, pos, vel }</code>.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-document.<span class="c-fn">addEventListener</span>(<span class="c-str">'keydown'</span>, (e) => {
-  <span class="c-kw">if</span> (<span class="c-fn">isTyping</span>()) <span class="c-kw">return</span>;
-  <span class="c-com">// your hotkey logic</span>
-}, true);   <span class="c-com">// capture: beat the game's own handlers</span></pre>
-        </div>
+        <!-- 6. Event Subscriptions -->
+        <section class="docs-section" id="events">
+          <div class="docs-section-badge">Events &middot; Reactive API</div>
+          <h2 class="docs-h2">Event Subscriptions &middot; <code>window.__hb.on()</code></h2>
+          <p class="docs-text">
+            Subscribe to real-time room events without polling the DOM. Handlers are invoked immediately when the underlying engine processes incoming network packets.
+          </p>
+          <div class="docs-table-wrap">
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Event Name</th>
+                  <th>Callback Payload</th>
+                  <th>Trigger Condition</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>'goal'</code></td>
+                  <td><code>{ team: 'red' | 'blue' }</code></td>
+                  <td>Fired whenever a goal is validated by the referee engine.</td>
+                </tr>
+                <tr>
+                  <td><code>'matchEnd'</code></td>
+                  <td><code>{ team: 'red' | 'blue' }</code></td>
+                  <td>Fired when the match concludes via time expiration or score limit.</td>
+                </tr>
+                <tr>
+                  <td><code>'chat'</code></td>
+                  <td><code>{ player: number, name: string, msg: string }</code></td>
+                  <td>Fired when any player sends a public message.</td>
+                </tr>
+                <tr>
+                  <td><code>'whisper'</code></td>
+                  <td><code>{ player: number, name: string, msg: string }</code></td>
+                  <td>Fired when a private direct message is received.</td>
+                </tr>
+                <tr>
+                  <td><code>'join'</code></td>
+                  <td><code>{ player: number, name: string }</code></td>
+                  <td>Fired when a new user enters the room.</td>
+                </tr>
+                <tr>
+                  <td><code>'leave'</code></td>
+                  <td><code>{ player: number, name: string, reason, banned, by }</code></td>
+                  <td>Fired when a user leaves, is kicked, or is banned.</td>
+                </tr>
+                <tr>
+                  <td><code>'gameStart'</code></td>
+                  <td><code>{ by: string | null }</code></td>
+                  <td>Fired when an administrator kicks off the game.</td>
+                </tr>
+                <tr>
+                  <td><code>'gameStop'</code></td>
+                  <td><code>{ by: string | null }</code></td>
+                  <td>Fired when an administrator halts the game.</td>
+                </tr>
+                <tr>
+                  <td><code>'pause'</code></td>
+                  <td><code>{ by: string | null, paused: boolean, countdown: boolean }</code></td>
+                  <td>Fired when match play is paused or resumed.</td>
+                </tr>
+                <tr>
+                  <td><code>'teamMove'</code></td>
+                  <td><code>{ by, player, name, team: 'red' | 'blue' | 'spec' }</code></td>
+                  <td>Fired when a player changes team slots.</td>
+                </tr>
+                <tr>
+                  <td><code>'adminChange'</code></td>
+                  <td><code>{ by, player, name, admin: boolean }</code></td>
+                  <td>Fired when admin rights are granted or revoked.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="docs-codeblock">
+            <div class="docs-cb-head">
+              <span>event-listener.js</span>
+              <button class="docs-cb-copy">Copy</button>
+            </div>
+            <pre><span class="c-com">// Listen for scoring events and chat announcements</span>
+window.__hb.<span class="c-fn">on</span>(<span class="c-str">'goal'</span>, ({ team }) => {
+  console.<span class="c-fn">log</span>(<span class="c-str">`GOAL! The ${team.toUpperCase()} team scored!`</span>);
+});
 
-        <h3>Stable gameframe document reference</h3>
-        <div class="codeblock" data-code>
-          <div class="cb-head"><span>top-level scripts only</span><button class="copy-btn">copy</button></div>
-          <pre><span class="c-kw">function</span> <span class="c-fn">getGameDoc</span>() {
-  <span class="c-kw">const</span> f = document.<span class="c-fn">querySelector</span>(<span class="c-str">'iframe.gameframe'</span>);
-  <span class="c-kw">if</span> (!f) <span class="c-kw">return</span> null;
-  <span class="c-kw">try</span> { <span class="c-kw">return</span> f.contentDocument || null; } <span class="c-kw">catch</span> (e) { <span class="c-kw">return</span> null; }
-}</pre>
-        </div>
-      </section>
+window.__hb.<span class="c-fn">on</span>(<span class="c-str">'join'</span>, ({ name }) => {
+  console.<span class="c-fn">log</span>(<span class="c-str">`Welcome ${name} to the match.`</span>);
+});</pre>
+          </div>
+        </section>
 
-      <section id="example">
-        <h2>Full example</h2>
-        <p>A complete, minimal script: chase assist. It keeps the user circle moving toward the ball while a hotkey is held, and cleans up its input on room loss.</p>
-        <div class="codeblock" data-code>
-          <div class="cb-head"><span>chase-assist.js</span><button class="copy-btn">copy</button></div>
-          <pre><span class="c-com">// ==UserScript==</span>
-<span class="c-com">// @name       Chase assist</span>
-<span class="c-com">// @version    1.0.0</span>
+        <!-- 7. Room Administration -->
+        <section class="docs-section" id="administration">
+          <div class="docs-section-badge">Admin &middot; Quality of Life</div>
+          <h2 class="docs-h2">Room Administration &amp; Actions</h2>
+          <p class="docs-text">
+            For room owners, tournament organizers, and community hosts, <code>window.__hb</code> provides safe, programmatic wrappers around standard room management actions:
+          </p>
+          <div class="docs-table-wrap">
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Method Signature</th>
+                  <th>Return Type</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>__hb.chat(message)</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Sends an in-game chat message to the room. Returns <code>true</code> if delivered.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.join(team)</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Moves local user to <code>'red'</code>, <code>'blue'</code>, or <code>'spec'</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.leave()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Safely exits the current room and transitions back to the lobby.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.start()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Starts match play if host privileges are present.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.stop()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Stops active match play.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.pause()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Toggles pause / resume state.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.auto()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Toggles automated team balancing.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.random()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Randomly shuffles players into Red and Blue teams.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.reset()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Resets room match statistics and scores.</td>
+                </tr>
+                <tr>
+                  <td><code>__hb.admin.lock()</code></td>
+                  <td><code>boolean</code></td>
+                  <td>Locks or unlocks team slots to prevent unapproved joining.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 8. Production Examples -->
+        <section class="docs-section" id="examples">
+          <div class="docs-section-badge">Reference &middot; Production Ready</div>
+          <h2 class="docs-h2">Production Implementation Examples</h2>
+
+          <h3 class="docs-h3">Example 1: Liquid Glass Telemetry &amp; Ball Speed HUD</h3>
+          <p class="docs-text">
+            Builds a floating dark-glass HUD badge on top of the game canvas that calculates real-time ball velocity in km/h and displays match time:
+          </p>
+          <div class="docs-codeblock">
+            <div class="docs-cb-head">
+              <span>ball-telemetry-hud.user.js</span>
+              <button class="docs-cb-copy">Copy</button>
+            </div>
+            <pre><span class="c-com">// ==UserScript==</span>
+<span class="c-com">// @name         Ball Speed &amp; Telemetry HUD</span>
+<span class="c-com">// @version      1.0.0</span>
+<span class="c-com">// @description  Displays real-time ball velocity and match metrics.</span>
 <span class="c-com">// ==/UserScript==</span>
+
 (<span class="c-kw">function</span> () {
   <span class="c-str">'use strict'</span>;
-  <span class="c-kw">if</span> (window.__chaseAssist) <span class="c-kw">return</span>;      <span class="c-com">// single-init guard</span>
-  window.__chaseAssist = true;
+  <span class="c-kw">if</span> (window.__ballSpeedHud) <span class="c-kw">return</span>;
+  window.__ballSpeedHud = <span class="c-kw">true</span>;
 
-  <span class="c-kw">const</span> g = window.parent.g;
-  <span class="c-kw">if</span> (!g || !g.bh) <span class="c-kw">return</span>;
-
-  <span class="c-kw">let</span> held = false;
-  <span class="c-kw">const</span> KEY = <span class="c-str">'KeyT'</span>;
-
-  <span class="c-kw">function</span> <span class="c-fn">isTyping</span>() {
-    <span class="c-kw">const</span> el = document.activeElement;
-    <span class="c-kw">const</span> tag = el ? (el.tagName || <span class="c-str">''</span>).toUpperCase() : <span class="c-str">''</span>;
-    <span class="c-kw">return</span> tag === <span class="c-str">'INPUT'</span> || tag === <span class="c-str">'TEXTAREA'</span>;
-  }
-
-  document.<span class="c-fn">addEventListener</span>(<span class="c-str">'keydown'</span>, (e) => {
-    <span class="c-kw">if</span> (e.code === KEY &amp;&amp; !<span class="c-fn">isTyping</span>()) held = true;
-  }, true);
-
-  document.<span class="c-fn">addEventListener</span>(<span class="c-str">'keyup'</span>, (e) => {
-    <span class="c-kw">if</span> (e.code === KEY) {
-      held = false;
-      g.<span class="c-fn">out</span>(<span class="c-str">'Left'</span>);
-      g.<span class="c-fn">out</span>(<span class="c-str">'Right'</span>);
-    }
-  }, true);
+  <span class="c-com">// Create floating HUD badge element</span>
+  <span class="c-kw">const</span> badge = document.<span class="c-fn">createElement</span>(<span class="c-str">'div'</span>);
+  badge.style.cssText = <span class="c-str">`
+    position: fixed;
+    top: 14px;
+    right: 18px;
+    z-index: 9999;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(27,33,37,0.92) 0%, rgba(20,26,30,0.85) 100%);
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    font-family: monospace;
+    font-size: 12px;
+    color: #f0f4f8;
+    pointer-events: none;
+    display: none;
+  `</span>;
+  document.body.<span class="c-fn">appendChild</span>(badge);
 
   <span class="c-fn">setInterval</span>(() => {
-    <span class="c-kw">const</span> s = g.<span class="c-fn">snap</span>();
-    <span class="c-kw">if</span> (!s.ok || !s.me || !s.ball || !held) {
-      <span class="c-kw">if</span> (!s.ok) { g.<span class="c-fn">out</span>(<span class="c-str">'Left'</span>); g.<span class="c-fn">out</span>(<span class="c-str">'Right'</span>); }
+    <span class="c-kw">if</span> (!window.__hb) <span class="c-kw">return</span>;
+    <span class="c-kw">const</span> s = window.__hb.<span class="c-fn">state</span>();
+    <span class="c-kw">if</span> (!s || !s.ok || !s.ball || s.phase !== <span class="c-str">'playing'</span>) {
+      badge.style.display = <span class="c-str">'none'</span>;
       <span class="c-kw">return</span>;
     }
-    <span class="c-kw">const</span> dx = s.ball.x - s.me.x;
-    g.<span class="c-fn">in</span>(dx &gt;= <span class="c-num">0</span> ? <span class="c-str">'Right'</span> : <span class="c-str">'Left'</span>);
-    g.<span class="c-fn">out</span>(dx &gt;= <span class="c-num">0</span> ? <span class="c-str">'Left'</span> : <span class="c-str">'Right'</span>);
-  }, <span class="c-num">16</span>);
+
+    <span class="c-kw">const</span> speedKmH = (Math.<span class="c-fn">hypot</span>(s.ball.vx, s.ball.vy) * <span class="c-num">3.6</span>).<span class="c-fn">toFixed</span>(<span class="c-num">1</span>);
+    <span class="c-kw">const</span> mins = Math.<span class="c-fn">floor</span>(s.elapsed / <span class="c-num">60</span>);
+    <span class="c-kw">const</span> secs = String(s.elapsed % <span class="c-num">60</span>).<span class="c-fn">padStart</span>(<span class="c-num">2</span>, <span class="c-str">'0'</span>);
+
+    badge.innerHTML = <span class="c-str">`
+      &lt;span style="color:#6fe88a;font-weight:bold;"&gt;&bull; LIVE&lt;/span&gt;
+      &nbsp;&nbsp;Ball: &lt;b&gt;${speedKmH} km/h&lt;/b&gt;
+      &nbsp;|&nbsp; Clock: &lt;b&gt;${mins}:${secs}&lt;/b&gt;
+    `</span>;
+    badge.style.display = <span class="c-str">'block'</span>;
+  }, <span class="c-num">40</span>);
 })();</pre>
-        </div>
-        <p>
-          Import it from the sidebar (Scripts &rarr; import), enable it, reload the gameframe. The
-          loader parses the header, runs the IIFE inside the gameframe, and the guard makes repeat
-          injections harmless.
-        </p>
-      </section>
-    </article>
-  </div>
+          </div>
+
+          <h3 class="docs-h3">Example 2: Automated Tournament Referee &amp; Welcome Bot</h3>
+          <p class="docs-text">
+            Listens for player connections, broadcasts welcoming messages, monitors match goals, and announces final results upon match conclusion:
+          </p>
+          <div class="docs-codeblock">
+            <div class="docs-cb-head">
+              <span>tournament-referee.user.js</span>
+              <button class="docs-cb-copy">Copy</button>
+            </div>
+            <pre><span class="c-com">// ==UserScript==</span>
+<span class="c-com">// @name         Tournament Referee Bot</span>
+<span class="c-com">// @version      1.0.0</span>
+<span class="c-com">// @description  Automated match announcements and welcome greetings.</span>
+<span class="c-com">// ==/UserScript==</span>
+
+(<span class="c-kw">function</span> () {
+  <span class="c-str">'use strict'</span>;
+  <span class="c-kw">if</span> (window.__tournamentRef) <span class="c-kw">return</span>;
+  window.__tournamentRef = <span class="c-kw">true</span>;
+
+  <span class="c-kw">const</span> boot = () => {
+    <span class="c-kw">if</span> (!window.__hb) <span class="c-kw">return setTimeout</span>(boot, <span class="c-num">250</span>);
+
+    <span class="c-com">// Welcome connecting players</span>
+    window.__hb.<span class="c-fn">on</span>(<span class="c-str">'join'</span>, ({ name }) => {
+      window.__hb.<span class="c-fn">chat</span>(<span class="c-str">`Welcome to the lobby, ${name}!`</span>);
+    });
+
+    <span class="c-com">// Announce match goal tally</span>
+    window.__hb.<span class="c-fn">on</span>(<span class="c-str">'goal'</span>, ({ team }) => {
+      <span class="c-kw">const</span> s = window.__hb.<span class="c-fn">state</span>();
+      <span class="c-kw">if</span> (s) {
+        window.__hb.<span class="c-fn">chat</span>(
+          <span class="c-str">`[GOAL] ${team.toUpperCase()} scores! Current Score: Red ${s.scoreRed} &mdash; ${s.scoreBlue} Blue`</span>
+        );
+      }
+    });
+
+    <span class="c-com">// Announce match conclusion winner</span>
+    window.__hb.<span class="c-fn">on</span>(<span class="c-str">'matchEnd'</span>, ({ team }) => {
+      window.__hb.<span class="c-fn">chat</span>(<span class="c-str">`[MATCH OVER] Victory goes to the ${team.toUpperCase()} team! Well played.`</span>);
+    });
+  };
+
+  boot();
+})();</pre>
+          </div>
+
+          <h3 class="docs-h3">Example 3: Dynamic Discord RPC Score Syncer</h3>
+          <p class="docs-text">
+            Bridges in-game match state to Discord Rich Presence using the top-level Electron API:
+          </p>
+          <div class="docs-codeblock">
+            <div class="docs-cb-head">
+              <span>discord-score-syncer.user.js</span>
+              <button class="docs-cb-copy">Copy</button>
+            </div>
+            <pre><span class="c-com">// ==UserScript==</span>
+<span class="c-com">// @name         Discord Rich Presence Syncer</span>
+<span class="c-com">// @version      1.0.0</span>
+<span class="c-com">// @description  Syncs active match scores to Discord client presence.</span>
+<span class="c-com">// ==/UserScript==</span>
+
+(<span class="c-kw">function</span> () {
+  <span class="c-str">'use strict'</span>;
+  <span class="c-kw">if</span> (window.__discordSyncer) <span class="c-kw">return</span>;
+  window.__discordSyncer = <span class="c-kw">true</span>;
+
+  <span class="c-fn">setInterval</span>(() => {
+    <span class="c-kw">const</span> api = window.electronAPI || (window.parent &amp;&amp; window.parent.electronAPI);
+    <span class="c-kw">if</span> (!api || !window.__hb) <span class="c-kw">return</span>;
+
+    <span class="c-kw">const</span> s = window.__hb.<span class="c-fn">state</span>();
+    <span class="c-kw">if</span> (s &amp;&amp; s.ok &amp;&amp; s.phase === <span class="c-str">'playing'</span>) {
+      <span class="c-kw">const</span> msg = <span class="c-str">`Playing ${s.roomName || 'Match'} | Red ${s.scoreRed} - ${s.scoreBlue} Blue`</span>;
+      api.<span class="c-fn">updateDiscordRPC</span>(msg);
+    } <span class="c-kw">else</span> {
+      api.<span class="c-fn">updateDiscordRPC</span>(<span class="c-str">'In Lobby &bull; AtomHax v0.5.4'</span>);
+    }
+  }, <span class="c-num">3000</span>);
+})();</pre>
+          </div>
+        </section>
+
+        <!-- 9. Lifecycle & Safety -->
+        <section class="docs-section" id="best-practices">
+          <div class="docs-section-badge">Standards &middot; Best Practices</div>
+          <h2 class="docs-h2">Lifecycle, Timing &amp; Safety Guidelines</h2>
+          <p class="docs-text">
+            When developing extensions for the AtomHax client, follow these engineering standards to maintain high stability and smooth performance:
+          </p>
+          <div class="docs-callout">
+            <strong>1. Guard Against Duplicate Injections:</strong> Scripts re-evaluate when moving between rooms or replays. Protect global event listeners by checking an initialization flag like <code>if (window.__myScriptActive) return;</code> at the top of your file.
+          </div>
+          <div class="docs-callout note">
+            <strong>2. Do Not Block Native Typing:</strong> When capturing keyboard shortcuts, ensure the user is not actively typing inside chat or room input fields by checking <code>document.activeElement.tagName === 'INPUT'</code>.
+          </div>
+          <div class="docs-callout caution">
+            <strong>3. Observe DOM Rebuilds:</strong> HaxBall reconstructs portions of its DOM when transitioning between views. Use a <code>MutationObserver</code> or recurring interval when binding custom DOM elements to avoid losing UI nodes.
+          </div>
+        </section>
+      </article>
+    </div>
+  </main>
 
   <footer class="footer">
     <div class="footer-container">
-      <span>AtomHax &mdash; Open Source HaxBall Desktop Client (GPL-3.0)</span>
+      <span>AtomHax is Not Affiliated With Haxball.com in any way or form.</span>
       <div class="footer-links">
-        <a href="index.html">&larr; Overview</a>
-        <a href="https://github.com/2Gbps/AtomHax" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="index.html">Overview</a>
+        <a href="index.html#features">Features</a>
+        <a href="index.html#practice">Demo</a>
+        <a href="index.html#download">Download</a>
+        <a href="api.html">API Docs</a>
       </div>
     </div>
   </footer>
 
+  <script src="atom.js" type="module" defer></script>
+  <script src="dock.js" type="module" defer></script>
   <script>
-    const tocLinks = document.querySelectorAll('#toc a');
-    const targets = [...tocLinks].map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
-    const setActive = () => {
-      let current = targets[0];
-      for (const t of targets) {
-        if (t.getBoundingClientRect().top < 120) current = t;
-      }
-      tocLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + (current && current.id)));
-    };
-    window.addEventListener('scroll', setActive, { passive: true });
-    setActive();
-
-    document.querySelectorAll('.copy-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const pre = btn.closest('.codeblock').querySelector('pre');
+    // Copy code button interaction
+    document.querySelectorAll('.docs-cb-copy').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const code = button.closest('.docs-codeblock').querySelector('pre').innerText;
         try {
-          await navigator.clipboard.writeText(pre.innerText);
-          btn.textContent = 'Copied';
-          setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
-        } catch (e) {}
+          await navigator.clipboard.writeText(code);
+          const original = button.textContent;
+          button.textContent = 'Copied!';
+          button.style.color = '#6fe88a';
+          setTimeout(() => {
+            button.textContent = original;
+            button.style.color = '';
+          }, 1500);
+        } catch (_) {}
       });
     });
 
-    const progress = document.querySelector('.scroll-progress');
-    const updateProgress = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      progress.style.transform = `scaleX(${max > 0 ? window.scrollY / max : 0})`;
+    // Active TOC link tracking
+    const tocLinks = document.querySelectorAll('.docs-toc-link');
+    const sections = [...tocLinks].map((link) => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+
+    const updateActiveToc = () => {
+      const scrollY = window.scrollY + 140;
+      let activeSection = sections[0];
+      sections.forEach((sec) => {
+        if (sec.offsetTop <= scrollY) activeSection = sec;
+      });
+      tocLinks.forEach((link) => {
+        link.classList.toggle('is-active', link.getAttribute('href') === '#' + (activeSection ? activeSection.id : ''));
+      });
     };
-    window.addEventListener('scroll', updateProgress, { passive: true });
-    updateProgress();
+    window.addEventListener('scroll', updateActiveToc, { passive: true });
+    updateActiveToc();
   </script>
 </body>
 </html>
