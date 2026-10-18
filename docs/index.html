@@ -12,10 +12,40 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="styles.css">
   <script>
-    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-    if (!window.location.hash || window.location.hash === '#hero') {
+    (function () {
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+      if (window.location.hash && window.location.hash !== '#hero') return;
+
+      // The embedded demo focuses its own input while its game frame boots,
+      // which can yank the page down to the practice section. Pin the top of
+      // the page until the user shows intent (or the boot window passes).
+      var PIN_MS = 2200;
+      var root = document.documentElement;
+      var priorScrollBehavior = root.style.scrollBehavior;
+      root.style.scrollBehavior = 'auto';
       window.scrollTo(0, 0);
-    }
+
+      var released = false;
+      var release = function () {
+        if (released) return;
+        released = true;
+        root.style.scrollBehavior = priorScrollBehavior;
+        ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach(function (evt) {
+          window.removeEventListener(evt, release);
+        });
+      };
+      ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach(function (evt) {
+        window.addEventListener(evt, release, { passive: true });
+      });
+
+      var deadline = Date.now() + PIN_MS;
+      (function pin() {
+        if (released) return;
+        if (window.scrollY !== 0) window.scrollTo(0, 0);
+        if (Date.now() >= deadline) { release(); return; }
+        requestAnimationFrame(pin);
+      })();
+    })();
   </script>
   <script type="importmap">
   {

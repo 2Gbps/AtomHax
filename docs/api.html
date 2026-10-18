@@ -498,19 +498,20 @@ window.__hb.<span class="c-fn">on</span>(<span class="c-str">'join'</span>, ({ n
           <div class="docs-section-badge">Reference &middot; Production Ready</div>
           <h2 class="docs-h2">Production Implementation Examples</h2>
 
-          <h3 class="docs-h3">Example 1: Liquid Glass Telemetry &amp; Ball Speed HUD</h3>
+          <h3 class="docs-h3">Example 1: Liquid Glass Ball Speed HUD</h3>
           <p class="docs-text">
-            Builds a floating dark-glass HUD badge on top of the game canvas that calculates real-time ball velocity in km/h and displays match time:
+            Builds a glass telemetry pill in the bottom-left corner of the gameframe that renders real-time ball velocity in km/h. It consumes the documented <code>window.__hb</code> API when present and otherwise captures the engine directly, so older client builds are covered too:
           </p>
           <div class="docs-codeblock">
             <div class="docs-cb-head">
-              <span>ball-telemetry-hud.user.js</span>
+              <span>ball-speed-hud.user.js</span>
               <button class="docs-cb-copy">Copy</button>
             </div>
             <pre><span class="c-com">// ==UserScript==</span>
-<span class="c-com">// @name         Ball Speed &amp; Telemetry HUD</span>
-<span class="c-com">// @version      1.0.0</span>
-<span class="c-com">// @description  Displays real-time ball velocity and match metrics.</span>
+<span class="c-com">// @name         Ball Speed HUD</span>
+<span class="c-com">// @version      1.3.0</span>
+<span class="c-com">// @description  Glass pill with the real-time ball speed, bottom-left. Uses the documented window.__hb API when present, otherwise captures the engine directly.</span>
+<span class="c-com">// @noframes     false</span>
 <span class="c-com">// ==/UserScript==</span>
 
 (<span class="c-kw">function</span> () {
@@ -518,46 +519,204 @@ window.__hb.<span class="c-fn">on</span>(<span class="c-str">'join'</span>, ({ n
   <span class="c-kw">if</span> (window.__ballSpeedHud) <span class="c-kw">return</span>;
   window.__ballSpeedHud = <span class="c-kw">true</span>;
 
-  <span class="c-com">// Create floating HUD badge element</span>
-  <span class="c-kw">const</span> badge = document.<span class="c-fn">createElement</span>(<span class="c-str">'div'</span>);
-  badge.style.cssText = <span class="c-str">`
+  <span class="c-kw">const</span> TICK_MS = <span class="c-num">40</span>;          <span class="c-com">// render/poll cadence</span>
+  <span class="c-kw">const</span> PILL_LEFT = <span class="c-num">12</span>;        <span class="c-com">// gameframe-local inset from the left edge</span>
+  <span class="c-kw">const</span> BOTTOM_FALLBACK = <span class="c-num">48</span>;  <span class="c-com">// used when the game's bottom bar cannot be measured</span>
+  <span class="c-kw">const</span> MEASURE_EVERY = <span class="c-num">25</span>;    <span class="c-com">// re-measure the bottom bar every ~1s</span>
+
+  <span class="c-com">// ── Glass pill ──</span>
+  <span class="c-com">// Same material recipe the client applies to HaxBall's own fps/ping stats</span>
+  <span class="c-com">// view: gradient fill, hairline border, inset top highlight, hard text</span>
+  <span class="c-com">// shadow. Pill silhouette instead of the stats view's rounded rectangle.</span>
+  <span class="c-com">// No backdrop-filter — it blurs the gameplay underneath and forces an</span>
+  <span class="c-com">// extra GPU compositing layer over the canvas. Nothing here animates, so</span>
+  <span class="c-com">// the pill only repaints when the number changes.</span>
+  <span class="c-kw">const</span> pill = document.<span class="c-fn">createElement</span>(<span class="c-str">'div'</span>);
+  pill.style.cssText = <span class="c-str">`
     position: fixed;
-    top: 14px;
-    right: 18px;
+    left: ${PILL_LEFT}px;
+    bottom: ${BOTTOM_FALLBACK}px;
     z-index: 9999;
-    padding: 8px 14px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, rgba(27,33,37,0.92) 0%, rgba(20,26,30,0.85) 100%);
+    display: none;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(27,33,37,0.85) 0%, rgba(27,33,37,0.7) 50%, rgba(27,33,37,0.8) 100%);
     border: 1px solid rgba(255,255,255,0.12);
-    backdrop-filter: blur(16px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
     font-family: monospace;
     font-size: 12px;
+    line-height: 1;
     color: #f0f4f8;
+    text-shadow: 1px 1px 1px #000, 0 1px 1px #000;
     pointer-events: none;
-    display: none;
+    white-space: nowrap;
   `</span>;
-  document.body.<span class="c-fn">appendChild</span>(badge);
 
-  <span class="c-fn">setInterval</span>(() => {
-    <span class="c-kw">if</span> (!window.__hb) <span class="c-kw">return</span>;
-    <span class="c-kw">const</span> s = window.__hb.<span class="c-fn">state</span>();
-    <span class="c-kw">if</span> (!s || !s.ok || !s.ball || s.phase !== <span class="c-str">'playing'</span>) {
-      badge.style.display = <span class="c-str">'none'</span>;
+  <span class="c-kw">const</span> liveDot = document.<span class="c-fn">createElement</span>(<span class="c-str">'span'</span>);
+  liveDot.style.cssText = <span class="c-str">`
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #6fe88a;
+    box-shadow: 0 0 6px rgba(111,232,138,0.9);
+  `</span>;
+
+  <span class="c-kw">const</span> speedLabel = document.<span class="c-fn">createElement</span>(<span class="c-str">'span'</span>);
+  speedLabel.textContent = <span class="c-str">'0.0 km/h'</span>;
+
+  pill.<span class="c-fn">appendChild</span>(liveDot);
+  pill.<span class="c-fn">appendChild</span>(speedLabel);
+
+  <span class="c-com">// ── Engine capture (clients without window.__hb) ──</span>
+  <span class="c-com">// Old client builds predate interact-bridge.js, so the documented API is</span>
+  <span class="c-com">// not there. Read the ball straight from the engine instead. The engine is</span>
+  <span class="c-com">// minified, so both channels match on shape, never on a fixed object graph:</span>
+  <span class="c-com">//</span>
+  <span class="c-com">//   bind — the client binds methods to objects at join time; the room is</span>
+  <span class="c-com">//          the object carrying ta() + T.K (player list) + a numeric yc.</span>
+  <span class="c-com">//   push — the world spawns bodies through Array.prototype.push into an</span>
+  <span class="c-com">//          array of {a, G, V} objects (position, velocity, radius); the</span>
+  <span class="c-com">//          ball is entry 0. This channel self-heals across room changes</span>
+  <span class="c-com">//          because a rebuilt world is a new array.</span>
+  <span class="c-com">//</span>
+  <span class="c-com">// Both hooks are passive, guarded, and settle to near-zero cost once the</span>
+  <span class="c-com">// references are held.</span>
+  <span class="c-kw">let</span> capturedRoom = <span class="c-kw">null</span>;
+  <span class="c-kw">let</span> capturedBodies = <span class="c-kw">null</span>;
+
+  (<span class="c-kw">function</span> hookBind() {
+    <span class="c-kw">const</span> originalBind = Function.prototype.bind;
+    <span class="c-kw">if</span> (originalBind.__ballSpeedHudHook) <span class="c-kw">return</span>;
+    originalBind.__ballSpeedHudHook = <span class="c-num">1</span>;
+    Function.prototype.bind = <span class="c-kw">function</span> (thisArg) {
+      <span class="c-kw">const</span> bound = originalBind.<span class="c-fn">apply</span>(this, arguments);
+      <span class="c-kw">try</span> {
+        <span class="c-kw">if</span> (thisArg &amp;&amp; <span class="c-kw">typeof</span> thisArg === <span class="c-str">'object'</span> &amp;&amp;
+            thisArg.T &amp;&amp; Array.<span class="c-fn">isArray</span>(thisArg.T.K) &amp;&amp;
+            <span class="c-kw">typeof</span> thisArg.yc === <span class="c-str">'number'</span> &amp;&amp; <span class="c-kw">typeof</span> thisArg.ta === <span class="c-str">'function'</span>) {
+          <span class="c-kw">if</span> (capturedRoom !== thisArg) capturedRoom = thisArg;
+        }
+      } <span class="c-kw">catch</span> (e) {}
+      <span class="c-kw">return</span> bound;
+    };
+  })();
+
+  (<span class="c-kw">function</span> hookPush() {
+    <span class="c-kw">const</span> originalPush = Array.prototype.push;
+    <span class="c-kw">if</span> (originalPush.__ballSpeedHudHook) <span class="c-kw">return</span>;
+    originalPush.__ballSpeedHudHook = <span class="c-num">1</span>;
+    Array.prototype.push = <span class="c-kw">function</span> (element) {
+      <span class="c-kw">try</span> {
+        <span class="c-kw">if</span> (element &amp;&amp; <span class="c-kw">typeof</span> element === <span class="c-str">'object'</span> &amp;&amp;
+            <span class="c-kw">typeof</span> element.V === <span class="c-str">'number'</span> &amp;&amp; element.a &amp;&amp; element.G) {
+          <span class="c-kw">if</span> (capturedBodies !== this) capturedBodies = this;
+        }
+      } <span class="c-kw">catch</span> (e) {}
+      <span class="c-kw">return</span> originalPush.<span class="c-fn">apply</span>(this, arguments);
+    };
+  })();
+
+  <span class="c-kw">const</span> readDirectBall = () => {
+    <span class="c-kw">let</span> bodies = capturedBodies;
+    <span class="c-kw">if</span> (!bodies &amp;&amp; capturedRoom &amp;&amp; capturedRoom.T) {
+      <span class="c-kw">const</span> game = capturedRoom.T.M;
+      bodies = game &amp;&amp; game.va ? game.va.H : <span class="c-kw">null</span>;
+    }
+    <span class="c-kw">if</span> (!bodies || !bodies.length) <span class="c-kw">return</span> <span class="c-kw">null</span>;
+    <span class="c-kw">const</span> ball = bodies[0];
+    <span class="c-kw">if</span> (!ball || !ball.a || !ball.G) <span class="c-kw">return</span> <span class="c-kw">null</span>;
+    <span class="c-kw">return</span> { vx: ball.G.x, vy: ball.G.y };
+  };
+
+  <span class="c-com">// ── Telemetry source selection ──</span>
+  <span class="c-com">// Prefer the documented bridge. Sticky once it produces one ok snapshot:</span>
+  <span class="c-com">// from then on its phase gating is authoritative. Until (or unless) it</span>
+  <span class="c-com">// does, read the engine directly.</span>
+  <span class="c-kw">let</span> hbUsable = <span class="c-kw">false</span>;
+
+  <span class="c-kw">const</span> readHbSnapshot = () => {
+    <span class="c-kw">const</span> bridge = window.__hb;
+    <span class="c-kw">if</span> (!bridge || <span class="c-kw">typeof</span> bridge.state !== <span class="c-str">'function'</span>) <span class="c-kw">return</span> <span class="c-kw">null</span>;
+    <span class="c-kw">try</span> {
+      <span class="c-kw">const</span> snapshot = bridge.<span class="c-fn">state</span>();
+      <span class="c-kw">return</span> snapshot &amp;&amp; snapshot.ok ? snapshot : <span class="c-kw">null</span>;
+    } <span class="c-kw">catch</span> (e) {
+      <span class="c-kw">return</span> <span class="c-kw">null</span>;
+    }
+  };
+
+  <span class="c-com">// ── Rendering state ──</span>
+  <span class="c-kw">let</span> visible = <span class="c-kw">false</span>;
+  <span class="c-kw">let</span> lastSpeedText = <span class="c-str">''</span>;
+  <span class="c-kw">let</span> tickCount = <span class="c-num">0</span>;
+  <span class="c-kw">let</span> bottomOffset = BOTTOM_FALLBACK;
+
+  <span class="c-kw">const</span> setVisible = (on) => {
+    <span class="c-kw">if</span> (visible === on) <span class="c-kw">return</span>;
+    visible = on;
+    pill.style.display = on ? <span class="c-str">'flex'</span> : <span class="c-str">'none'</span>;
+  };
+
+  <span class="c-com">// Sit the pill directly above the game's bottom UI band (chat + the native</span>
+  <span class="c-com">// stats view where the fps counter lives). Measured from the live layout</span>
+  <span class="c-com">// instead of hardcoded, so it holds in every chat mode and window size.</span>
+  <span class="c-kw">const</span> measureBottomOffset = () => {
+    <span class="c-kw">const</span> bottomBar = document.<span class="c-fn">querySelector</span>(<span class="c-str">'.bottom-section'</span>);
+    <span class="c-kw">const</span> viewportHeight = window.innerHeight;
+    <span class="c-kw">let</span> offset = BOTTOM_FALLBACK;
+    <span class="c-kw">if</span> (bottomBar) {
+      <span class="c-kw">const</span> bounds = bottomBar.<span class="c-fn">getBoundingClientRect</span>();
+      <span class="c-kw">if</span> (bounds.top &gt;= viewportHeight * <span class="c-num">0.45</span>) {
+        offset = Math.<span class="c-fn">round</span>(viewportHeight - bounds.top) + <span class="c-num">10</span>;
+      }
+    }
+    <span class="c-kw">if</span> (offset !== bottomOffset) {
+      bottomOffset = offset;
+      pill.style.bottom = offset + <span class="c-str">'px'</span>;
+    }
+  };
+
+  <span class="c-kw">const</span> tick = () => {
+    tickCount += <span class="c-num">1</span>;
+
+    <span class="c-kw">const</span> snapshot = <span class="c-fn">readHbSnapshot</span>();
+    <span class="c-kw">if</span> (snapshot) hbUsable = <span class="c-kw">true</span>;
+
+    <span class="c-kw">let</span> ball = <span class="c-kw">null</span>;
+    <span class="c-kw">if</span> (hbUsable) {
+      ball = snapshot &amp;&amp; snapshot.phase === <span class="c-str">'playing'</span> ? snapshot.ball : <span class="c-kw">null</span>;
+    } <span class="c-kw">else</span> {
+      <span class="c-kw">try</span> {
+        ball = <span class="c-fn">readDirectBall</span>();
+      } <span class="c-kw">catch</span> (e) {
+        ball = <span class="c-kw">null</span>;
+      }
+    }
+
+    <span class="c-kw">if</span> (!ball) {
+      <span class="c-fn">setVisible</span>(<span class="c-kw">false</span>);
       <span class="c-kw">return</span>;
     }
 
-    <span class="c-kw">const</span> speedKmH = (Math.<span class="c-fn">hypot</span>(s.ball.vx, s.ball.vy) * <span class="c-num">3.6</span>).<span class="c-fn">toFixed</span>(<span class="c-num">1</span>);
-    <span class="c-kw">const</span> mins = Math.<span class="c-fn">floor</span>(s.elapsed / <span class="c-num">60</span>);
-    <span class="c-kw">const</span> secs = String(s.elapsed % <span class="c-num">60</span>).<span class="c-fn">padStart</span>(<span class="c-num">2</span>, <span class="c-str">'0'</span>);
+    <span class="c-kw">if</span> (!pill.isConnected &amp;&amp; document.body) document.body.<span class="c-fn">appendChild</span>(pill);
+    <span class="c-kw">if</span> (!visible || tickCount % MEASURE_EVERY === <span class="c-num">0</span>) <span class="c-fn">measureBottomOffset</span>();
 
-    badge.innerHTML = <span class="c-str">`
-      &lt;span style="color:#6fe88a;font-weight:bold;"&gt;&bull; LIVE&lt;/span&gt;
-      &nbsp;&nbsp;Ball: &lt;b&gt;${speedKmH} km/h&lt;/b&gt;
-      &nbsp;|&nbsp; Clock: &lt;b&gt;${mins}:${secs}&lt;/b&gt;
-    `</span>;
-    badge.style.display = <span class="c-str">'block'</span>;
-  }, <span class="c-num">40</span>);
+    <span class="c-kw">const</span> speedKmH = (Math.<span class="c-fn">hypot</span>(ball.vx, ball.vy) * <span class="c-num">3.6</span>).<span class="c-fn">toFixed</span>(<span class="c-num">1</span>);
+    <span class="c-kw">const</span> speedText = <span class="c-str">`${speedKmH} km/h`</span>;
+    <span class="c-com">// Write only on change; textContent on one span, never innerHTML — no</span>
+    <span class="c-com">// re-parse, no style recalc beyond the changed text node.</span>
+    <span class="c-kw">if</span> (speedText !== lastSpeedText) {
+      speedLabel.textContent = speedText;
+      lastSpeedText = speedText;
+    }
+    <span class="c-fn">setVisible</span>(<span class="c-kw">true</span>);
+  };
+
+  <span class="c-fn">setInterval</span>(tick, TICK_MS);
+  tick();
 })();</pre>
           </div>
 

@@ -1,4 +1,4 @@
-import { animate } from 'animejs';
+import { animate, stagger } from 'animejs';
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -10,9 +10,12 @@ const dock = document.querySelector('.dock');
 
 if (dock) {
   const items = [...dock.querySelectorAll('.dock-item')];
-  const REACH = 140;
-  const BASE_SCALE = 1.0;
-  const MAX_SCALE = 1.22;
+  const REACH = 170;          // pointer influence radius, px
+  const MAX_SCALE = 1.32;     // peak magnification under the pointer
+  const PUSH_X = 8;           // horizontal shove applied to neighbors, px
+  const LIFT_Y = 3;           // vertical lift at the pointer, px
+  const TRACKING = 'transform 70ms linear';
+  const SETTLING = 'transform 360ms cubic-bezier(0.34, 1.56, 0.64, 1)';
 
   let centers = [];
   const measure = () => {
@@ -21,26 +24,35 @@ if (dock) {
       return { midX: rect.left + rect.width / 2 };
     });
   };
+  measure();
+
+  let entranceDone = reduced;   // pointer physics unlocks once the entrance settles
 
   const handlePointerMove = (e) => {
-    if (!finePointer || reduced) return;
+    if (!finePointer || reduced || !entranceDone) return;
     const x = e.clientX;
     items.forEach((item, i) => {
       const midX = centers[i] ? centers[i].midX : 0;
       const dist = Math.abs(x - midX);
       if (dist < REACH) {
-        const factor = 1 - dist / REACH;
-        const scale = BASE_SCALE + (MAX_SCALE - BASE_SCALE) * Math.sin(factor * Math.PI * 0.5);
-        item.style.transform = `scale(${scale.toFixed(3)}) translateY(-2px)`;
+        const falloff = 1 - dist / REACH;
+        const eased = falloff * falloff * (3 - 2 * falloff);   // smoothstep — gentle shoulders
+        const scale = 1 + (MAX_SCALE - 1) * eased;
+        const shove = (midX >= x ? 1 : -1) * PUSH_X * eased * eased;
+        item.style.transition = TRACKING;
+        item.style.transform =
+          `translate3d(${shove.toFixed(2)}px, ${(-LIFT_Y * eased).toFixed(2)}px, 0) scale(${scale.toFixed(3)})`;
       } else {
-        item.style.transform = 'scale(1) translateY(0)';
+        item.style.transition = SETTLING;
+        item.style.transform = 'translate3d(0, 0, 0) scale(1)';
       }
     });
   };
 
   const handlePointerLeave = () => {
     items.forEach((item) => {
-      item.style.transform = 'scale(1) translateY(0)';
+      item.style.transition = SETTLING;
+      item.style.transform = 'translate3d(0, 0, 0) scale(1)';
     });
   };
 
@@ -48,6 +60,28 @@ if (dock) {
   dock.addEventListener('pointermove', handlePointerMove);
   dock.addEventListener('pointerleave', handlePointerLeave);
   window.addEventListener('resize', measure, { passive: true });
+
+  /* Entrance — items rise into place, then the pointer drives the physics */
+  if (!reduced) {
+    items.forEach((item) => {
+      item.style.opacity = '0';
+    });
+    try {
+      animate(items, {
+        opacity: [0, 1],
+        translateY: [-14, 0],
+        delay: stagger(55, { start: 160 }),
+        duration: 560,
+        ease: 'outCubic',
+        onComplete: () => { entranceDone = true; },
+      });
+    } catch (e) {
+      items.forEach((item) => {
+        item.style.opacity = '1';
+      });
+      entranceDone = true;
+    }
+  }
 
   /* Active dot tracking based on viewport scroll position */
   const sectionEntries = items
