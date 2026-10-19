@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#060a12">
+  <meta name="description" content="Privacy information for AtomHax: what the open-source client stores locally, what the website does not collect, and the third-party services involved when you play.">
+  <title>AtomHax &mdash; Privacy Information</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Navigation Brand Pill -->
+  <a class="nav-brand" href="index.html">
+    <img class="nav-brand-logo" src="assets/atomhax-mark.png" alt="AtomHax" width="16" height="16">
+    <span>AtomHax</span>
+  </a>
+
+  <!-- Floating macOS Dock Navigation -->
+  <nav class="nav">
+    <div class="dock">
+      <a class="dock-item" href="index.html">Overview</a>
+      <a class="dock-item" href="index.html#features">Features</a>
+      <a class="dock-item" href="index.html#practice">Demo</a>
+      <a class="dock-item" href="index.html#download">Download</a>
+      <a class="dock-item" href="api.html">API Docs</a>
+    </div>
+  </nav>
+
+  <main class="docs-page-container">
+    <header class="docs-hero">
+      <div class="tag-badge">
+        <span class="badge-chrome">Legal</span>
+        <span>Effective October 18, 2026</span>
+      </div>
+      <h1 class="docs-hero-title">Privacy Information</h1>
+      <p class="docs-hero-sub">What AtomHax is, what it does not do, and every third party involved when you use the client or this website.</p>
+    </header>
+
+    <div class="docs-layout">
+      <!-- Sticky Sidebar Table of Contents -->
+      <aside class="docs-sidebar">
+        <div class="docs-sidebar-title">Privacy</div>
+        <nav class="docs-toc" id="docs-toc">
+          <a class="docs-toc-link is-active" href="#overview">Short Version</a>
+          <a class="docs-toc-link" href="#website">This Website</a>
+          <a class="docs-toc-link" href="#client">The Client</a>
+          <a class="docs-toc-link" href="#local-data">Stored on Your Computer</a>
+          <a class="docs-toc-link" href="#third-parties">Third Parties When You Play</a>
+          <a class="docs-toc-link" href="#choices">Your Choices</a>
+          <a class="docs-toc-link" href="#changes">Changes &amp; Contact</a>
+        </nav>
+      </aside>
+
+      <!-- Content -->
+      <article class="docs-content">
+        <section class="docs-section" id="overview">
+          <div class="docs-section-badge">1 &middot; Summary</div>
+          <h2 class="docs-h2">Short Version</h2>
+          <p class="docs-text">
+            AtomHax is a free, open-source desktop client. The project operates no backend, collects no analytics, requires no account, serves no ads, and sells nothing. Data that is attributable to AtomHax lives on your computer: your preferences, your imported scripts, and your browser cache.
+          </p>
+          <p class="docs-text">
+            A client without servers cannot be private on its own &mdash; the game traffic goes where the game sends it, and this page maps exactly which third parties touch data, and when.
+          </p>
+          <div class="docs-callout note">
+            <strong>The one-line answer:</strong> AtomHax itself sends nothing to anyone, keeps everything local, and every third-party connection it does make is listed below.
+          </div>
+        </section>
+
+        <section class="docs-section" id="website">
+          <div class="docs-section-badge">2 &middot; atomhax website</div>
+          <h2 class="docs-h2">This Website</h2>
+          <p class="docs-text">
+            This site is static and hosted by GitHub Pages. AtomHax sets no cookies and embeds no analytics. GitHub, as the host, processes standard web server logs (such as IP address and request metadata) for its own security and operations under GitHub's privacy statement.
+          </p>
+          <p class="docs-text">
+            Your browser loads two shared assets from third parties &mdash; typefaces from Google Fonts and an icon stylesheet from cdnjs &mdash; meaning those providers see the requests, and with them your IP address, whenever the site is opened.
+          </p>
+        </section>
+
+        <section class="docs-section" id="client">
+          <div class="docs-section-badge">3 &middot; Desktop client</div>
+          <h2 class="docs-h2">The Client</h2>
+          <p class="docs-text">
+            The client's job is to load the HTML5 game from haxball.com and run it with local performance and interface enhancements. All game traffic &mdash; authentication and nicknames, room hosting, live match data over websocket relays &mdash; flows between you and haxball.com's infrastructure, or between you and the peers your game session connects you to. That traffic belongs to haxball.com's systems and is governed by haxball.com's privacy practices.
+          </p>
+          <p class="docs-text">
+            No AtomHax backend sits in that path. The client has no telemetry channel, no update-ping home, and no crash reporting to the project.
+          </p>
+        </section>
+
+        <section class="docs-section" id="local-data">
+          <div class="docs-section-badge">4 &middot; Local files</div>
+          <h2 class="docs-h2">Stored on Your Computer</h2>
+          <p class="docs-text">
+            The client keeps everything environment-local inside its application data folder (<code>%APPDATA%\atomhax\</code>):
+          </p>
+          <ul class="docs-list">
+            <li><code>preferences.json</code> &mdash; your client settings, such as performance limits.</li>
+            <li><code>scripts.json</code> &mdash; the extensions you imported and whether each is enabled.</li>
+            <li>Browser cache and website data &mdash; the Chromium profile the client runs on, holding whatever the game's pages (haxball.com) store there, including any cookies it sets.</li>
+          </ul>
+          <p class="docs-text">
+            Imported scripts execute locally with the client's permissions, the same as any JavaScript you run in a browser tab. Review a script's code before loading it, and treat scripts from untrusted sources the way you treat programs from untrusted sources.
+          </p>
+        </section>
+
+        <section class="docs-section" id="third-parties">
+          <div class="docs-section-badge">5 &middot; Ecosystem map</div>
+          <h2 class="docs-h2">Third Parties When You Play</h2>
+          <div class="docs-table-wrap">
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Provider</th>
+                  <th>When</th>
+                  <th>What Happens</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>haxball.com</code></td>
+                  <td>Every session</td>
+                  <td>Serves the game, accounts, nicknames, room hosting and websocket relays &mdash; under its own privacy practices. Advertising slots and an analytics beacon on its pages are its choice and are loaded by its pages.</td>
+                </tr>
+                <tr>
+                  <td><code>Google reCAPTCHA</code></td>
+                  <td>Rooms with captcha enabled</td>
+                  <td>The game renders a real reCAPTCHA widget; the exchange needed to pass it runs between you, Google, and the room.</td>
+                </tr>
+                <tr>
+                  <td><code>Google Fonts &amp; cdnjs</code></td>
+                  <td>Sites that load them</td>
+                  <td>Standard asset requests from your browser, which include your IP address with each load.</td>
+                </tr>
+                <tr>
+                  <td><code>Discord</code></td>
+                  <td>Only when You enable it</td>
+                  <td>Presence broadcasting is a script capability: an integration script you install and run sends match presence data from your client to Discord.</td>
+                </tr>
+                <tr>
+                  <td><code>GitHub</code></td>
+                  <td>Sites, releases, code</td>
+                  <td>Hosts this website, the releases, and the source repository; processes usage of those services under GitHub's privacy statement.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="docs-section" id="choices">
+          <div class="docs-section-badge">6 &middot; Control</div>
+          <h2 class="docs-h2">Your Choices</h2>
+          <ul class="docs-list">
+            <li>Reset the client at any time by deleting <code>%APPDATA%\atomhax\</code> while the client is closed &mdash; preferences, scripts, and cached site data go back to factory state.</li>
+            <li>Manage or remove any imported script in the client's script manager, or delete its entry from <code>scripts.json</code>.</li>
+            <li>The game's chat and rooms are public spaces run by other people &mdash; share personal information there as in any public forum: only as much as you want anyone to have.</li>
+          </ul>
+        </section>
+
+        <section class="docs-section" id="changes">
+          <div class="docs-section-badge">7 &middot; Meta</div>
+          <h2 class="docs-h2">Changes &amp; Contact</h2>
+          <p class="docs-text">
+            This page changes as the client changes, and the effective date above is the version marker. Privacy questions and corrections go through the issue tracker: <a href="https://github.com/2Gbps/AtomHax">github.com/2Gbps/AtomHax</a>.
+          </p>
+          <p class="docs-text">
+            Related: <a href="terms.html">Terms of Service</a>.
+          </p>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-container">
+      <span>AtomHax is Not Affiliated With Haxball.com in any way or form.</span>
+      <div class="footer-links">
+        <a href="index.html">Overview</a>
+        <a href="index.html#features">Features</a>
+        <a href="index.html#practice">Demo</a>
+        <a href="index.html#download">Download</a>
+        <a href="api.html">API Docs</a>
+        <a href="terms.html">Terms</a>
+        <a href="privacy.html">Privacy</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="dock.js" type="module" defer></script>
+  <script>
+    // Active TOC link tracking
+    const tocLinks = document.querySelectorAll('.docs-toc-link');
+    const sections = [...tocLinks].map((link) => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+
+    const updateActiveToc = () => {
+      const scrollY = window.scrollY + 140;
+      let activeSection = sections[0];
+      sections.forEach((sec) => {
+        if (sec.offsetTop <= scrollY) activeSection = sec;
+      });
+      tocLinks.forEach((link) => {
+        link.classList.toggle('is-active', link.getAttribute('href') === '#' + (activeSection ? activeSection.id : ''));
+      });
+    };
+    window.addEventListener('scroll', updateActiveToc, { passive: true });
+    updateActiveToc();
+  </script>
+</body>
+</html>

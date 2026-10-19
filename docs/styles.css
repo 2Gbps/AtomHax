@@ -1357,6 +1357,7 @@ input[type="submit"],
 
 .footer-links {
   display: flex;
+  flex-wrap: wrap;
   gap: 18px;
 }
 .footer-links a {
@@ -1617,6 +1618,31 @@ input[type="submit"],
 
 .docs-callout strong {
   color: #fff;
+}
+
+/* ─── Legal pages: term/privacy item lists ─── */
+.docs-list {
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1.68;
+  margin: 0 0 16px;
+  padding-left: 22px;
+  display: grid;
+  gap: 8px;
+  max-width: 760px;
+}
+
+.docs-list li {
+  padding-left: 4px;
+}
+
+.docs-list li::marker {
+  color: var(--faint);
+}
+
+.docs-list code {
+  color: #fff;
+  opacity: 0.82;
 }
 
 .docs-codeblock {
