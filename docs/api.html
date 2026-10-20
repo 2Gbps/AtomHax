@@ -6,19 +6,25 @@
   <meta name="theme-color" content="#060a12">
   <meta name="description" content="Technical reference for AtomHax: client extensibility, match telemetry, event subscriptions, and integration patterns.">
   <title>AtomHax &mdash; Client Extensibility & API Reference</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "animejs": "https://cdn.jsdelivr.net/npm/animejs@4.5.0/dist/modules/index.js",
+      "animejs/adapters/three": "https://cdn.jsdelivr.net/npm/animejs@4.5.0/dist/modules/adapters/three/index.js",
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+    }
+  }
+  </script>
+  <link rel="icon" type="image/png" href="assets/favicon.png">
 </head>
 <body>
-  <!-- Navigation Brand Pill -->
-  <a class="nav-brand" href="index.html">
-    <img class="nav-brand-logo" src="assets/atomhax-mark.png" alt="AtomHax" width="16" height="16">
-    <span>AtomHax</span>
-  </a>
-
   <!-- Floating macOS Dock Navigation -->
   <nav class="nav">
     <div class="dock">

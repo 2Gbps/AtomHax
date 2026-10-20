@@ -105,16 +105,6 @@ if (dock) {
     window.addEventListener('scroll', setActive, { passive: true });
     setActive();
   }
-
-  const brand = document.querySelector('.nav-brand');
-  if (brand && !reduced) {
-    animate(brand, {
-      opacity: [0, 1],
-      y: [-8, 0],
-      duration: 500,
-      ease: 'outCubic',
-    });
-  }
 }
 
 /* ═══════════════════════════════════════════════
