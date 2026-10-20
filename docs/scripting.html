@@ -46,7 +46,7 @@
     <header class="docs-hero">
       <div class="tag-badge">
         <span class="badge-chrome">Client Extensibility</span>
-        <span>AtomHax v0.5.4 API</span>
+        <span>AtomHax v0.5.5 API</span>
       </div>
       <h1 class="docs-hero-title">Client Scripting &amp; Extensibility API</h1>
       <p class="docs-hero-sub">The complete technical specification for creating client extensions, custom HUD telemetry overlays, tournament referee automation, and Discord Rich Presence integrations in AtomHax.</p>
@@ -650,7 +650,7 @@ window.__hb.<span class="c-fn">on</span>(<span class="c-str">'join'</span>, ({ n
       <span class="c-kw">const</span> msg = <span class="c-str">`Playing ${s.roomName || 'Match'} | Red ${s.scoreRed} - ${s.scoreBlue} Blue`</span>;
       api.<span class="c-fn">updateDiscordRPC</span>(msg);
     } <span class="c-kw">else</span> {
-      api.<span class="c-fn">updateDiscordRPC</span>(<span class="c-str">'In Lobby &bull; AtomHax v0.5.4'</span>);
+      api.<span class="c-fn">updateDiscordRPC</span>(<span class="c-str">'In Lobby &bull; AtomHax v0.5.5'</span>);
     }
   }, <span class="c-num">3000</span>);
 })();</pre>
